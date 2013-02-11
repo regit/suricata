@@ -45,7 +45,7 @@ typedef struct AppLayerProto_ {
     uint16_t to_client;
     uint16_t map_size;
     char logger; /**< does this proto have a logger enabled? */
-
+    uint16_t nb_of_logger;
     AppLayerLocalMap **map;
 
     void *(*StateAlloc)(void);
@@ -98,6 +98,7 @@ typedef struct AppLayerParserResult_ {
                                                      in to server direction. */
 #define APP_LAYER_TRANSACTION_TOCLIENT  0x04    /**< transaction has been inspected
                                                      in to server direction. */
+#define NB_MAX_LOGGER                   5
 
 typedef struct AppLayerParserState_ {
     uint8_t flags;
@@ -119,7 +120,7 @@ typedef struct AppLayerParserStateStore_ {
     uint16_t inspect_id;
     /** the highest id of logged state's (i.e. http transactions), updated by
      *  a logging module throught the app layer API */
-    uint16_t logged_id;
+    uint16_t logged_id[NB_MAX_LOGGER];
     /** the higest id of available state's, updated by the app layer parser */
     uint16_t avail_id;
     /** the base id signifies the id number of the oldest id we have in our
@@ -260,7 +261,7 @@ void AppLayerRegisterLocalStorageFunc(uint16_t proto,
 void *AppLayerGetProtocolParserLocalStorage(uint16_t);
 void AppLayerRegisterGetFilesFunc(uint16_t proto,
         FileContainer *(*StateGetFile)(void *, uint8_t));
-void AppLayerRegisterLogger(uint16_t proto);
+uint16_t AppLayerRegisterLogger(uint16_t proto);
 uint16_t AppLayerGetProtoByName(const char *);
 const char *AppLayerGetProtoString(int proto);
 void AppLayerRegisterTruncateFunc(uint16_t proto, void (*Truncate)(void *, uint8_t));
@@ -279,9 +280,9 @@ int AlpParseFieldByDelimiter(AppLayerParserResult *, AppLayerParserState *,
 
 /* transaction handling */
 int AppLayerTransactionUpdateInspectId(Flow *, char);
-void AppLayerTransactionUpdateLoggedId(Flow *);
+void AppLayerTransactionUpdateLoggedId(Flow *, uint16_t index_of_logger);
 int AppLayerTransactionGetLoggableId(Flow *f);
-int AppLayerTransactionGetLoggedId(Flow *f);
+int AppLayerTransactionGetLoggedId(Flow *f, uint16_t index_of_logger);
 int AppLayerTransactionGetBaseId(Flow *f);
 int AppLayerTransactionGetInspectId(Flow *f);
 uint16_t AppLayerTransactionGetAvailId(Flow *f);

@@ -338,7 +338,7 @@ static void LogTlsLogPem(LogTlsLogThread *aft, Packet *p, SSLState *state, LogTl
         fclose(fpmeta);
     } else {
         SCLogWarning(SC_ERR_FOPEN, "Can't open meta file: %s",
-                     filename); 
+                     filename);
         SCReturn;
     }
 
@@ -393,7 +393,7 @@ static TmEcode LogTlsLogIPWrapper(ThreadVars *tv, Packet *p, void *data, PacketQ
         LogTlsLogPem(aft, p, ssl_state, hlog, ipproto);
     }
 
-    int r = AppLayerTransactionGetLoggedId(p->flow);
+    int r = AppLayerTransactionGetLoggedId(p->flow,tmm_modules[TMM_LOGTLSLOG].index);
 
     if (r != 0) {
         goto end;
@@ -416,7 +416,7 @@ static TmEcode LogTlsLogIPWrapper(ThreadVars *tv, Packet *p, void *data, PacketQ
                          timebuf, srcip, sp, dstip, dp,
                          ssl_state->server_connp.cert0_subject, ssl_state->server_connp.cert0_issuerdn);
 
-    AppLayerTransactionUpdateLoggedId(p->flow);
+    AppLayerTransactionUpdateLoggedId(p->flow,tmm_modules[TMM_LOGTLSLOG].index);
 
     if (hlog->flags & LOG_TLS_EXTENDED) {
         LogTlsLogExtended(aft, ssl_state);

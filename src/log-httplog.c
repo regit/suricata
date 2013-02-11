@@ -71,10 +71,14 @@ void TmModuleLogHttpLogRegister (void) {
     tmm_modules[TMM_LOGHTTPLOG].RegisterTests = NULL;
     tmm_modules[TMM_LOGHTTPLOG].cap_flags = 0;
 
-    OutputRegisterModule(MODULE_NAME, "http-log", LogHttpLogInitCtx);
 
     /* enable the logger for the app layer */
-    AppLayerRegisterLogger(ALPROTO_HTTP);
+    tmm_modules[TMM_LOGHTTPLOG].index = AppLayerRegisterLogger(ALPROTO_HTTP);
+
+    if(tmm_modules[TMM_LOGHTTPLOG].index != -1)
+        OutputRegisterModule(MODULE_NAME, "http-log", LogHttpLogInitCtx);
+    else
+        SCLogError(SC_ERR_COUNTER_EXCEEDED,"Number of logger HTTP exceeded");
 }
 
 void TmModuleLogHttpLogIPv4Register (void) {
@@ -393,7 +397,7 @@ static TmEcode LogHttpLogIPWrapper(ThreadVars *tv, Packet *p, void *data, Packet
     if (proto != ALPROTO_HTTP)
         goto end;
 
-    int r = AppLayerTransactionGetLoggedId(p->flow);
+    int r = AppLayerTransactionGetLoggedId(p->flow,tmm_modules[TMM_LOGHTTPLOG].index);
     if (r < 0) {
         goto end;
     }
@@ -525,7 +529,7 @@ static TmEcode LogHttpLogIPWrapper(ThreadVars *tv, Packet *p, void *data, Packet
         fflush(hlog->file_ctx->fp);
         SCMutexUnlock(&hlog->file_ctx->fp_mutex);
 
-        AppLayerTransactionUpdateLoggedId(p->flow);
+        AppLayerTransactionUpdateLoggedId(p->flow,tmm_modules[TMM_LOGHTTPLOG].index);
     }
 
 end:
