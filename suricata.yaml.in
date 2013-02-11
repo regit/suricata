@@ -99,7 +99,17 @@ outputs:
       enabled: no  # Log TLS connections.
       filename: tls.log # File to store TLS logs.
       #extended: yes # Log extended information like fingerprint
+  # a json based log of TLS handshake parameters (no alerts)
+  - tls-json-log:
+      enabled: no  # Log TLS connections.
+      filename: tls-json.log # File to store TLS logs.
+      #extended: yes # Log extended information like fingerprint
+
+  # output module to store extracted certificates to disk
+  - tls-store:
+      enabled: no  # Log TLS connections.
       certs-log-dir: certs # directory to store the certificates files
+
 
   # a line based log to used with pcap file study.
   # this module is dedicated to offline pcap parsing (empty output

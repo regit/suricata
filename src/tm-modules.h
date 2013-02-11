@@ -51,7 +51,7 @@ typedef struct TmModule_ {
     TmEcode (*DeInit)(void);
 
     void (*RegisterTests)(void);
-
+    int index;
     uint8_t cap_flags;   /**< Flags to indicate the capability requierment of
                              the given TmModule */
     /* Other flags used by the module */

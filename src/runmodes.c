@@ -412,6 +412,43 @@ void RunModeInitializeOutputs(void)
             continue;
 #endif
         }
+        /* retro-compatibility YAML < 1.4, no tls-store -> tls-log activate it */
+        else if ((strcmp(output->val, "tls-log")== 0)){
+            ConfNode *conf_tls_store_node = ConfGetNode("outputs.tls-store");
+
+            if(conf_tls_store_node==NULL){
+                 OutputModule *module = OutputGetModuleByConfName("tls-store");
+                 if (module == NULL) {
+                     SCLogWarning(SC_ERR_INVALID_ARGUMENT,
+                             "No output module named %s, ignoring", "tls-store");
+                     continue;
+                 }
+
+                 OutputCtx *output_ctx = NULL;
+                 if (module->InitFunc != NULL) {
+                     output_ctx = module->InitFunc(output_config);
+                     if (output_ctx == NULL) {
+                         /* In most cases the init function will have logged the
+                          * error. Maybe we should exit on init errors? */
+                         continue;
+                     }
+                 }
+                tm_module= TmModuleGetByName(module->name);
+                if (tm_module == NULL) {
+                    SCLogError(SC_ERR_INVALID_ARGUMENT,
+                            "TmModuleGetByName for %s failed (loaded because of cert-log-dir value on %s", "tls-store", output->val);
+                    exit(EXIT_FAILURE);
+                }
+                RunModeOutput *runmode_output = SCCalloc(1, sizeof(RunModeOutput));
+                if (unlikely(runmode_output == NULL))
+                    return;
+                runmode_output->tm_module = tm_module;
+                runmode_output->output_ctx = output_ctx;
+                TAILQ_INSERT_TAIL(&RunModeOutputs, runmode_output, entries);
+            }
+        }
+
+
 
         OutputModule *module = OutputGetModuleByConfName(output->val);
         if (module == NULL) {

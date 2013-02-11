@@ -194,6 +194,7 @@ log-filestore.c log-filestore.h \
 log-httplog.c log-httplog.h \
 log-pcap.c log-pcap.h \
 log-tlslog.c log-tlslog.h \
+log-tlslog-json.c log-tlslog-json.h \
 output.c output.h \
 packet-queue.c packet-queue.h \
 pkt-var.c pkt-var.h \

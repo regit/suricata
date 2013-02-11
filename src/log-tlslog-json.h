@@ -4,7 +4,7 @@
  * the GNU General Public License version 2 as published by the Free
  * Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -14,22 +14,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301, USA.
  */
+#ifndef __LOG_TLS_JSONLOG_H__
+#define __LOG_LSL_JSON_OG_H__
 
-/**
- * \file
- *
- * \author Roliers Jean-Paul <popof.fpn@gmail.com>
- * \author Eric Leblond <eric@regit.org>
- */
+void TmModuleLogTlsJsonLogRegister (void);
+void TmModuleLogTlsJsonLogIPv4Register (void);
+void TmModuleLogTlsJsonLogIPv6Register (void);
+OutputCtx *LogTlsJsonLogInitCtx(ConfNode *);
 
-#ifndef __LOG_TLSLOG_H__
-#define __LOG_TLSLOG_H__
-
-void TmModuleLogTlsLogRegister (void);
-void TmModuleLogTlsLogIPv4Register (void);
-void TmModuleLogTlsLogIPv6Register (void);
-OutputCtx *LogTlsLogInitCtx(ConfNode *);
-OutputCtx *StoreTlsInitCtx(ConfNode *);
-
-#endif /* __LOG_TLSLOG_H__ */
+#endif /* __LOG_JSONTLSLOG_H__ */
 

@@ -676,8 +676,12 @@ void AppLayerRegisterGetFilesFunc(uint16_t proto,
 /** \brief Indicate to the app layer parser that a logger is active
  *         for this protocol.
  */
-void AppLayerRegisterLogger(uint16_t proto) {
+uint16_t AppLayerRegisterLogger(uint16_t proto) {
     al_proto_table[proto].logger = TRUE;
+    if(al_proto_table[proto].nb_of_logger==NB_MAX_LOGGER)
+        return -1;
+    al_proto_table[proto].nb_of_logger++;
+    return (uint16_t) (al_proto_table[proto].nb_of_logger -1);
 }
 
 
@@ -824,8 +828,14 @@ static int AppLayerTransactionsCleanup(AppLayerProto *p, AppLayerParserStateStor
     }
 
     if (p->logger == TRUE) {
-        uint16_t low = (parser_state_store->logged_id < parser_state_store->inspect_id) ?
-            parser_state_store->logged_id : parser_state_store->inspect_id;
+        uint16_t min_logged=65535;
+        uint16_t index=0;
+        for(index=0;index<p->nb_of_logger;index++){
+            if(min_logged>parser_state_store->logged_id[index])
+                min_logged=parser_state_store->logged_id[index];
+        }
+        uint16_t low = (min_logged < parser_state_store->inspect_id) ?
+            min_logged : parser_state_store->inspect_id;
 
         obsolete = low - parser_state_store->base_id;
 
@@ -1137,7 +1147,7 @@ error:
 }
 
 /** \brief get the highest loggable transaction id */
-void AppLayerTransactionUpdateLoggedId(Flow *f) {
+void AppLayerTransactionUpdateLoggedId(Flow *f,uint16_t index_of_logger) {
     SCEnter();
 
     DEBUG_ASSERT_FLOW_LOCKED(f);
@@ -1150,14 +1160,14 @@ void AppLayerTransactionUpdateLoggedId(Flow *f) {
         goto error;
     }
 
-    parser_state_store->logged_id++;
+    parser_state_store->logged_id[index_of_logger]++;
     SCReturn;
 
 error:
     SCReturn;
 }
 /** \brief get the highest loggable transaction id */
-int AppLayerTransactionGetLoggedId(Flow *f) {
+int AppLayerTransactionGetLoggedId(Flow *f, uint16_t index_of_logger) {
     SCEnter();
 
     DEBUG_ASSERT_FLOW_LOCKED(f);
@@ -1170,7 +1180,7 @@ int AppLayerTransactionGetLoggedId(Flow *f) {
         goto error;
     }
 
-    SCReturnInt((int)parser_state_store->logged_id);
+    SCReturnInt((int)parser_state_store->logged_id[index_of_logger]);
 
 error:
     SCReturnInt(-1);

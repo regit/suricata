@@ -102,6 +102,7 @@
 #include "log-droplog.h"
 #include "log-httplog.h"
 #include "log-tlslog.h"
+#include "log-tlslog-json.h"
 #include "log-pcap.h"
 #include "log-file.h"
 #include "log-filestore.h"
@@ -1568,6 +1569,9 @@ int main(int argc, char **argv)
     TmModuleLogTlsLogRegister();
     TmModuleLogTlsLogIPv4Register();
     TmModuleLogTlsLogIPv6Register();
+    TmModuleLogTlsJsonLogRegister();
+    TmModuleLogTlsJsonLogIPv4Register();
+    TmModuleLogTlsJsonLogIPv6Register();
     /* pcap log */
     TmModulePcapLogRegister();
     /* file log */
