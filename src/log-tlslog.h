@@ -29,6 +29,7 @@ void TmModuleLogTlsLogRegister (void);
 void TmModuleLogTlsLogIPv4Register (void);
 void TmModuleLogTlsLogIPv6Register (void);
 OutputCtx *LogTlsLogInitCtx(ConfNode *);
+OutputCtx *StoreTlsInitCtx(ConfNode *);
 
 #endif /* __LOG_TLSLOG_H__ */
 
