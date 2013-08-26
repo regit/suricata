@@ -75,6 +75,8 @@ enum {
     MPM_TABLE_SIZE,
 };
 
+#define DEFAULT_MPM   MPM_AC
+
 typedef struct MpmMatchBucket_ {
     uint32_t len;
 } MpmMatchBucket;

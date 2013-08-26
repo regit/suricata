@@ -8890,7 +8890,7 @@ static int DetectIPProtoTestSig2(void)
         goto end;
     }
 
-    de_ctx->mpm_matcher = MPM_AC;
+    de_ctx->mpm_matcher = DEFAULT_MPM;
     de_ctx->flags |= DE_QUIET;
 
     de_ctx->sig_list = SigInit(de_ctx,
@@ -8978,7 +8978,7 @@ static int DetectIPProtoTestSig3(void)
         goto end;
     }
 
-    de_ctx->mpm_matcher = MPM_AC;
+    de_ctx->mpm_matcher = DEFAULT_MPM;
     de_ctx->flags |= DE_QUIET;
 
     de_ctx->sig_list = SigInit(de_ctx,
