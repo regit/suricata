@@ -67,7 +67,7 @@
 /* Run mode selected at suricata.c */
 extern int run_mode;
 
-SC_ATOMIC_EXTERN(unsigned char, flow_flags);
+SC_ATOMIC_EXTERN(unsigned int, flow_flags);
 
 /* 1 seconds */
 #define FLOW_NORMAL_MODE_UPDATE_DELAY_SEC 1
