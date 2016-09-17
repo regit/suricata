@@ -398,6 +398,7 @@ void RunModeDispatch(int runmode, const char *custom_mode)
         /* spawn management threads */
         FlowManagerThreadSpawn();
         FlowRecyclerThreadSpawn();
+        BypassedFlowManagerThreadSpawn();
         StatsSpawnThreads();
     }
 }
