@@ -69,3 +69,30 @@ pub extern "C" fn rs_ftp_pasv_response(input: *const libc::uint8_t, len: libc::u
     }
     return 0;
 }
+
+// 229 Entering Extended Passive Mode (|||48758|).
+named!(pub ftp_epsv_response<u16>,
+       do_parse!(
+            tag!("229") >>
+            take_until_and_consume!("|||") >>
+            port: getu16 >>
+            tag!("|).") >>
+            (
+                port
+            )
+        )
+);
+
+#[no_mangle]
+pub extern "C" fn rs_ftp_epsv_response(input: *const libc::uint8_t, len: libc::uint32_t) -> u16 {
+    let buf = unsafe{std::slice::from_raw_parts(input, len as usize)};
+    match ftp_epsv_response(buf) {
+        nom::IResult::Done(_, dport) => {
+            return dport;
+        }
+        nom::IResult::Incomplete(_) => { SCLogInfo!("epsv incomplete: '{:?}'", input);},
+        nom::IResult::Error(_) => { SCLogInfo!("epsv error on '{:?}'", input);},
+    }
+    return 0;
+}
+
