@@ -113,13 +113,8 @@ int AppLayerExpectationCreate(Flow *f, int direction, Port src, Port dst, AppPro
         return -1;
 
     iexp = IPPairGetStorageById(ipp, expectation_id);
-    if (iexp == NULL) {
-        exp->next = NULL;
-        IPPairSetStorageById(ipp, expectation_id, exp);
-    } else {
-        exp->next = iexp;
-        IPPairSetStorageById(ipp, expectation_id, exp);
-    }
+    exp->next = iexp;
+    IPPairSetStorageById(ipp, expectation_id, exp);
 
     IPPairUnlock(ipp);
     return 0;
