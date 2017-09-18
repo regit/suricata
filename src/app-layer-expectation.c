@@ -165,7 +165,9 @@ AppProto AppLayerExpectationLookup(Flow *f, int direction)
         if ((exp->sp == 0) || (exp->sp == f->sp)) {
             if ((exp->dp == 0) || (exp->dp == f->dp)) {
                 alproto = exp->alproto;
-                FlowSetStorageById(f, expectation_data_id, exp->data);
+                if (FlowSetStorageById(f, expectation_data_id, exp->data) != 0) {
+                    SCLogError(SC_ERR_UNKNOWN_VALUE, "Unable to set flow storage");
+                }
                 exp->data = NULL;
                 (void) IPPairDecrUsecnt(ipp);
                 /* remove the expectation */
