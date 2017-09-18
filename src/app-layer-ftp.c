@@ -554,20 +554,20 @@ static int FTPDataParse(Flow *f, void *ftp_state,
     /* we depend on detection engine for file pruning */
     flags |= FILE_USE_DETECT;
     if (ftpdata_state->files == NULL) {
+        const char *data = (char *)FlowGetStorageById(f, AppLayerExpectationGetDataId());
+        const char *filename;
+        if (data == NULL) {
+            SCReturnInt(-1);
+        }
+
         ftpdata_state->files = FileContainerAlloc();
         if (ftpdata_state->files == NULL) {
             SCLogError(SC_ERR_MEM_ALLOC, "Could not create file container");
             SCReturnInt(-1);
         }
 
-        const char *data = (char *)FlowGetStorageById(f, AppLayerExpectationGetDataId());
-        const char *filename;
-        if (data == NULL) {
-            filename = "default";
-        } else {
-            filename = data + sizeof(int64_t) + 5;
-            ftpdata_state->filename = SCStrdup(filename);
-        }
+        filename = data + sizeof(int64_t) + 5;
+        ftpdata_state->filename = SCStrdup(filename);
         f->parent_id = *(int64_t *)data;
         if (input_len >= 4 && SCMemcmpLowercase("retr", data + sizeof(int64_t), 4) == 0) {
             ftpdata_state->command = FTP_COMMAND_RETR;
