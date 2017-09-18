@@ -142,6 +142,20 @@ int AppLayerExpectationGetDataId(void)
     return expectation_data_id;
 }
 
+static void RemoveExpectation(IPPair *ipp, Expectation *pexp, Expectation *exp,
+                              Expectation *lexp)
+{
+    if (pexp == NULL) {
+        if (lexp != NULL) {
+            IPPairSetStorageById(ipp, expectation_id, lexp);
+        }
+    } else {
+        pexp->next = lexp;
+    }
+    SCFree(exp);
+    exp = lexp;
+}
+
 AppProto AppLayerExpectationLookup(Flow *f, int direction)
 {
     AppProto alproto = ALPROTO_UNKNOWN;
@@ -166,29 +180,16 @@ AppProto AppLayerExpectationLookup(Flow *f, int direction)
                 exp->data = NULL;
                 (void) IPPairDecrUsecnt(ipp);
                 /* remove the expectation */
-                if (pexp == NULL) {
-                    if (lexp != NULL) {
-                        IPPairSetStorageById(ipp, expectation_id, lexp);
-                    }
-                } else {
-                    pexp->next = lexp;
-                    SCFree(exp);
-                }
-                exp = NULL;
+                RemoveExpectation(ipp, pexp, exp, lexp);
+                continue;
             }
         }
         /* Cleaning remove old entries */
         if (exp && (ctime > exp->ts.tv_sec + EXPECTATION_TIMEOUT)) {
             (void) IPPairDecrUsecnt(ipp);
             /* remove the expectation */
-            if (pexp == NULL) {
-                if (lexp != NULL) {
-                    IPPairSetStorageById(ipp, expectation_id, lexp);
-                }
-            } else {
-                pexp->next = lexp;
-                SCFree(exp);
-            }
+            RemoveExpectation(ipp, pexp, exp, lexp);
+            continue;
         }
         pexp = exp;
         exp = lexp;
