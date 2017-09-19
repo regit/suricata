@@ -64,8 +64,14 @@ pub extern "C" fn rs_ftp_pasv_response(input: *const libc::uint8_t, len: libc::u
         nom::IResult::Done(_, dport) => {
             return dport;
         }
-        nom::IResult::Incomplete(_) => { SCLogInfo!("pasv incomplete: '{:?}'", input);},
-        nom::IResult::Error(_) => { SCLogInfo!("pasv error on '{:?}'", input);},
+        nom::IResult::Incomplete(_) => {
+            let buf = unsafe{std::slice::from_raw_parts(input, len as usize)};
+            SCLogInfo!("pasv incomplete: '{:?}'", buf);
+        },
+        nom::IResult::Error(_) => {
+            let buf = unsafe{std::slice::from_raw_parts(input, len as usize)};
+            SCLogInfo!("pasv error on '{:?}'", buf);
+        },
     }
     return 0;
 }
