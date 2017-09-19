@@ -49,7 +49,7 @@ named!(pub ftp_pasv_response<u16>,
             part1: getu16 >>
             tag!(",") >>
             part2: getu16 >>
-            alt! (tag!(").") | tag!(")")) >>
+            alt! (tag!(").") | tag!("):")) >>
             (
                 part1 * 256 + part2
             )
