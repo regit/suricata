@@ -335,7 +335,6 @@ static int FTPParsePassiveResponseV6(Flow *f, void *ftp_state, uint8_t *input, u
 #ifdef HAVE_RUST
     uint16_t dyn_port = rs_ftp_epsv_response(input, input_len);
     if (dyn_port == 0) {
-        SCLogNotice("Invalid epsv: '%s'", input);
         return -1;
     }
 
