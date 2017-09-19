@@ -66,11 +66,11 @@ pub extern "C" fn rs_ftp_pasv_response(input: *const libc::uint8_t, len: libc::u
         }
         nom::IResult::Incomplete(_) => {
             let buf = unsafe{std::slice::from_raw_parts(input, len as usize)};
-            SCLogInfo!("pasv incomplete: '{:?}'", buf);
+            SCLogInfo!("pasv incomplete: '{:?}'", String::from_utf8_lossy(buf));
         },
         nom::IResult::Error(_) => {
             let buf = unsafe{std::slice::from_raw_parts(input, len as usize)};
-            SCLogInfo!("pasv error on '{:?}'", buf);
+            SCLogInfo!("pasv error on '{:?}'", String::from_utf8_lossy(buf));
         },
     }
     return 0;
