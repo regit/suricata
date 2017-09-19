@@ -76,7 +76,7 @@ named!(pub ftp_epsv_response<u16>,
             tag!("229") >>
             take_until_and_consume!("|||") >>
             port: getu16 >>
-            tag!("|).") >>
+            alt! (tag!("|).") | tag!("|)")) >>
             (
                 port
             )
