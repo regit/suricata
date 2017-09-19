@@ -95,9 +95,16 @@ pub extern "C" fn rs_ftp_epsv_response(input: *const libc::uint8_t, len: libc::u
     match ftp_epsv_response(buf) {
         nom::IResult::Done(_, dport) => {
             return dport;
-        }
-        nom::IResult::Incomplete(_) => { SCLogInfo!("epsv incomplete: '{:?}'", input);},
-        nom::IResult::Error(_) => { SCLogInfo!("epsv error on '{:?}'", input);},
+        },
+        nom::IResult::Incomplete(_) => {
+            let buf = unsafe{std::slice::from_raw_parts(input, len as usize)};
+            SCLogInfo!("epsv incomplete: '{:?}'", buf);
+        },
+        nom::IResult::Error(_) => {
+            let buf = unsafe{std::slice::from_raw_parts(input, len as usize)};
+            SCLogInfo!("epsv error on '{:?}'", buf);
+        },
+
     }
     return 0;
 }
