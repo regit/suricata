@@ -43,6 +43,7 @@
 #include <linux/bpf.h>
 #include <bpf/libbpf.h>
 #include <bpf/bpf.h>
+#include <net/if.h>
 #include "config.h"
 
 #define BPF_MAP_MAX_COUNT 16
@@ -75,7 +76,7 @@ int EBPFGetMapFDByName(const char *name)
 #define bpf__is_error(ee) ee
 #define bpf__get_error(ee) 1
 
-int EBPFLoadFile(const char *path, const char * section, int *val)
+int EBPFLoadFile(const char *path, const char * section, int *val, uint8_t flags)
 {
     int err, found, pfd;
     struct bpf_object *bpfobj = NULL;
@@ -103,7 +104,11 @@ int EBPFLoadFile(const char *path, const char * section, int *val)
     bpf_object__for_each_program(bpfprog, bpfobj) {
         const char *title = bpf_program__title(bpfprog, 0);
         if (!strcmp(title, section)) {
-            bpf_program__set_socket_filter(bpfprog);
+            if (flags & EBPF_SOCKET_FILTER) {
+                bpf_program__set_socket_filter(bpfprog);
+            } else {
+                bpf_program__set_xdp(bpfprog);
+            }
             found = 1;
             break;
         }
@@ -160,6 +165,21 @@ int EBPFLoadFile(const char *path, const char * section, int *val)
     *val = pfd;
     return 0;
 }
+
+int EBPFSetupXDP(const char *iface, int fd)
+{
+    unsigned int ifindex = if_nametoindex(iface);
+    if (ifindex == 0) {
+        SCLogError(SC_ERR_INVALID_VALUE,
+                "Unknown interface '%s'", iface);
+        return -1;
+    } else {
+        /* Fix me use option to set XDP_FLAGS_SKB_MODE  or XDP_FLAGS_DRV_MODE */
+        bpf_set_link_xdp_fd(ifindex, fd, 2);
+    }
+    return 0;
+}
+
 
 int EBPFForEachFlowV4Table(const char *name,
                               int (*FlowCallback)(int fd, struct flowv4_keys *key, struct pair *value, void *data),
