@@ -93,7 +93,7 @@ typedef struct AFPIfaceConfig_
     int ebpf_lb_fd;
     const char *ebpf_filter_file;
     int ebpf_filter_fd;
-    char *xdp_filter_file;
+    const char *xdp_filter_file;
     int xdp_filter_fd;
     uint8_t xdp_mode;
     const char *out_iface;

@@ -424,7 +424,7 @@ static void *ParseAFPConfig(const char *iface)
     if (ConfGetChildValueWithDefault(if_root, if_default, "xdp-filter-file", &ebpf_file) != 1) {
         aconf->xdp_filter_file = NULL;
     } else {
-        char *xdp_mode;
+        const char *xdp_mode;
         SCLogInfo("af-packet will use '%s' as XDP filter file",
                   ebpf_file);
         aconf->xdp_filter_file = ebpf_file;
