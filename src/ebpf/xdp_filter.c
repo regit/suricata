@@ -49,14 +49,14 @@ struct pair {
 };
 
 struct bpf_map_def SEC("maps") flow_table_v4 = {
-    .type = BPF_MAP_TYPE_HASH,
+    .type = BPF_MAP_TYPE_PERCPU_HASH,
     .key_size = sizeof(struct flowv4_keys),
     .value_size = sizeof(struct pair),
     .max_entries = 32768,
 };
 
 struct bpf_map_def SEC("maps") flow_table_v6 = {
-    .type = BPF_MAP_TYPE_HASH,
+    .type = BPF_MAP_TYPE_PERCPU_HASH,
     .key_size = sizeof(struct flowv6_keys),
     .value_size = sizeof(struct pair),
     .max_entries = 32768,
