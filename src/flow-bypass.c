@@ -49,7 +49,6 @@ static int BypassedFlowV4Timeout(int fd, struct flowv4_keys *key, struct pair *v
     if (curtime->tv_sec - value->time / 1000000000 > BYPASSED_FLOW_TIMEOUT) {
         SCLogDebug("Got no packet for %d -> %d at %" PRIu64,
                    key->port16[0], key->port16[1], value->time);
-        EBPFDeleteKey(fd, key);
         return 1;
     }
     return 0;
