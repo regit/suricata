@@ -570,7 +570,6 @@ static int FTPDataParse(Flow *f, FtpDataState *ftpdata_state,
 
         ftpdata_state->files = FileContainerAlloc();
         if (ftpdata_state->files == NULL) {
-            SCLogError(SC_ERR_MEM_ALLOC, "Could not create file container");
             FlowFreeStorageById(f, AppLayerExpectationGetDataId());
             SCReturnInt(-1);
         }
@@ -594,13 +593,17 @@ static int FTPDataParse(Flow *f, FtpDataState *ftpdata_state,
             if (ret == -2) {
                 ret = 0;
                 SCLogDebug("FileAppendData() - file no longer being extracted");
+                goto out;
             } else if (ret < 0) {
                 SCLogDebug("FileAppendData() failed: %d", ret);
                 ret = -2;
+                goto out;
             }
         } else {
             ret = FileCloseFile(ftpdata_state->files, NULL, 0, flags);
             ftpdata_state->state = FTPDATA_STATE_FINISHED;
+            if (ret < 0)
+                goto out;
         }
     }
 
@@ -608,6 +611,8 @@ static int FTPDataParse(Flow *f, FtpDataState *ftpdata_state,
         ret = FileCloseFile(ftpdata_state->files, (uint8_t *) NULL, 0, flags);
         ftpdata_state->state = FTPDATA_STATE_FINISHED;
     }
+
+out:
     if (ftpdata_state->files) {
         FilePrune(ftpdata_state->files);
     }
