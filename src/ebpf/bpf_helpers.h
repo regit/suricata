@@ -1,6 +1,21 @@
 #ifndef __BPF_HELPERS_H
 #define __BPF_HELPERS_H
 
+#ifndef XDP_PACKET_HEADROOM
+/* User return codes for XDP prog type.
+ * A valid XDP program must return one of these defined values. All other
+ * return codes are reserved for future use. Unknown return codes will result
+ * in packet drop.
+ */
+enum xdp_action {
+	XDP_ABORTED = 0,
+	XDP_DROP,
+	XDP_PASS,
+	XDP_TX,
+};
+
+#endif
+
 /* helper macro to place programs, maps, license in
  * different sections in elf_bpf file. Section names
  * are interpreted by elf_bpf loader
