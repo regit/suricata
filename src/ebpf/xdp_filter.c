@@ -144,9 +144,9 @@ static int filter_ipv4(void *data, __u64 nh_off, void *data_end)
 #if 0
         char fmt[] = "Found flow v4: %u %d -> %d\n";
         bpf_trace_printk(fmt, sizeof(fmt), tuple.src, sport, dport);
-        __sync_fetch_and_add(&value->packets, 1);
-        __sync_fetch_and_add(&value->bytes, data_end - data);
 #endif
+        value->packets++;
+        value->bytes += data_end - data;
         value->time = bpf_ktime_get_ns();
         return XDP_DROP;
     }
@@ -185,9 +185,9 @@ static int filter_ipv6(void *data, __u64 nh_off, void *data_end)
 #if 0
         char fmt6[] = "Found IPv6 flow: %d -> %d\n";
         bpf_trace_printk(fmt6, sizeof(fmt6), sport, dport);
-        __sync_fetch_and_add(&value->packets, 1);
-        __sync_fetch_and_add(&value->bytes, data_end - data);
 #endif
+        value->packets++;
+        value->bytes += data_end - data;
         value->time = bpf_ktime_get_ns();
         return XDP_DROP;
     }
