@@ -199,9 +199,6 @@ int EBPFForEachFlowV4Table(const char *name,
     unsigned int nr_cpus = UtilCpuGetNumProcessorsConfigured();
     struct pair values_array[nr_cpus];
 
-    if (bpf_map_get_next_key(mapfd, &key, &next_key) != 0) {
-        return found;
-    }
     while (bpf_map_get_next_key(mapfd, &key, &next_key) == 0) {
         int iret = 1;
         int pkts_cnt = 0;
@@ -243,9 +240,6 @@ int EBPFForEachFlowV6Table(const char *name,
     unsigned int nr_cpus = UtilCpuGetNumProcessorsConfigured();
     struct pair values_array[nr_cpus];
 
-    if (bpf_map_get_next_key(mapfd, &key, &next_key) != 0) {
-        return found;
-    }
     while (bpf_map_get_next_key(mapfd, &key, &next_key) == 0) {
         int iret = 1;
         int pkts_cnt = 0;
