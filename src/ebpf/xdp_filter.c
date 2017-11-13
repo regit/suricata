@@ -115,7 +115,7 @@ static int filter_ipv4(void *data, __u64 nh_off, void *data_end)
     struct pair *value;
 
     if ((void *)(iph + 1) > data_end)
-        return 0;
+        return XDP_PASS;
 
     tuple.ip_proto = (uint32_t) iph->protocol;
     tuple.src = iph->saddr;
