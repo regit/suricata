@@ -281,7 +281,11 @@ static int FTPParseRequest(Flow *f, void *ftp_state,
                 state->port_line_len = state->current_line_len;
                 break;
             case FTP_COMMAND_RETR:
+                /* change direction (default to server) so expectation will handle
+                 * the correct message when expectation will match.
+                 */ 
                 direction = STREAM_TOCLIENT;
+                // fallthrough
             case FTP_COMMAND_STOR:
                 {
                     struct FtpTransferCmd *data = SCCalloc(1, sizeof(struct FtpTransferCmd));
