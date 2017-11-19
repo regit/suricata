@@ -179,6 +179,9 @@ int AppLayerExpectationCreate(Flow *f, int direction, Port src, Port dst, AppPro
     IPPairSetStorageById(ipp, g_expectation_id, exp);
 
     SC_ATOMIC_ADD(expectation_count, 1);
+    /* As we are creating the expectation, we release lock on IPPair without
+     * setting the ref count to 0. This way the IPPair will be kept till
+     * cleanup */
     IPPairUnlock(ipp);
     return 0;
 
@@ -202,6 +205,9 @@ static Expectation * RemoveExpectationAndGetNext(IPPair *ipp,
                                 Expectation *pexp, Expectation *exp,
                                 Expectation *lexp)
 {
+    /* we remove the object so we get ref count down by 1 to remove reference
+     * hold by the expectation
+     */
     (void) IPPairDecrUsecnt(ipp);
     SC_ATOMIC_SUB(expectation_count, 1);
     if (pexp == NULL) {
