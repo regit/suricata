@@ -41,7 +41,7 @@ struct flowv4_keys {
 		__be16 port16[2];
 	};
 	__u32 ip_proto;
-};
+}  __attribute__((__aligned__(8)));
 
 struct flowv6_keys {
     __be32 src[4];
@@ -51,13 +51,13 @@ struct flowv6_keys {
         __be16 port16[2];
     };
     __u32 ip_proto;
-};
+}  __attribute__((__aligned__(8)));
 
 struct pair {
     uint64_t time;
     uint64_t packets;
     uint64_t bytes;
-};
+} __attribute__((__aligned__(8)));
 
 struct flows_stats {
     uint64_t count;

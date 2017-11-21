@@ -20,7 +20,7 @@
 struct vlan_hdr {
     __u16	h_vlan_TCI;
     __u16	h_vlan_encapsulated_proto;
-};
+} __attribute__((__aligned__(8))) ;
 
 struct flowv4_keys {
     __u32 src;
@@ -30,7 +30,7 @@ struct flowv4_keys {
         __u16 port16[2];
     };
     __u32 ip_proto;
-};
+} __attribute__((__aligned__(8)));
 
 struct flowv6_keys {
     __u32 src[4];
@@ -40,13 +40,13 @@ struct flowv6_keys {
         __u16 port16[2];
     };
     __u32 ip_proto;
-};
+} __attribute__((__aligned__(8)));
 
 struct pair {
     uint64_t time;
     uint64_t packets;
     uint64_t bytes;
-};
+} __attribute__((__aligned__(8)));
 
 struct bpf_map_def SEC("maps") flow_table_v4 = {
     .type = BPF_MAP_TYPE_PERCPU_HASH,
