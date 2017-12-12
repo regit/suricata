@@ -121,6 +121,7 @@
 
 #include "util-streaming-buffer.h"
 #include "util-lua.h"
+#include "util-network-tree.h"
 
 #ifdef OS_WIN32
 #include "win32-syscall.h"
@@ -232,6 +233,7 @@ static void RegisterUnittests(void)
 #ifdef WINDIVERT
     SourceWinDivertRegisterTests();
 #endif
+    NetworkTreeRegisterTests();
 }
 #endif
 

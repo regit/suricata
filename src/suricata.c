@@ -179,6 +179,8 @@
 #include "rust-core-gen.h"
 #endif
 
+#include "util-network-tree.h"
+
 /*
  * we put this here, because we only use it here in main.
  */
@@ -2599,6 +2601,10 @@ static void PostConfLoadedDetectSetup(SCInstance *suri)
             if (suri->run_mode == RUNMODE_ENGINE_ANALYSIS) {
                 exit(EXIT_SUCCESS);
             }
+        }
+
+        if (!mt_enabled) {
+            NetworkTreeInit();
         }
 
         gettimeofday(&de_ctx->last_reload, NULL);
