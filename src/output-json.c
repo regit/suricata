@@ -38,6 +38,7 @@
 #include "util-unittest.h"
 #include "util-unittest-helper.h"
 
+#include "decode.h"
 #include "detect-parse.h"
 #include "detect-engine.h"
 #include "detect-engine-mpm.h"
@@ -60,6 +61,7 @@
 #include "util-device.h"
 #include "util-validate.h"
 #include "util-crypt.h"
+#include "util-network-tree.h"
 
 #include "flow-var.h"
 #include "flow-bit.h"
@@ -433,6 +435,8 @@ void JsonFiveTuple(const Packet *p, enum OutputJsonLogDirection dir, json_t *js)
     char srcip[46] = "", dstip[46] = "";
     Port sp, dp;
     char proto[16];
+    json_t *src_net_info = NULL;
+    json_t *dst_net_info = NULL;
 
     switch (dir) {
         case LOG_DIR_PACKET:
@@ -441,11 +445,15 @@ void JsonFiveTuple(const Packet *p, enum OutputJsonLogDirection dir, json_t *js)
                         srcip, sizeof(srcip));
                 PrintInet(AF_INET, (const void *)GET_IPV4_DST_ADDR_PTR(p),
                         dstip, sizeof(dstip));
+                src_net_info = NetworkTreeGetIPv4InfoAsJSON((uint8_t *)GET_IPV4_SRC_ADDR_PTR(p), p->tenant_id);
+                dst_net_info = NetworkTreeGetIPv4InfoAsJSON((uint8_t *)GET_IPV4_DST_ADDR_PTR(p), p->tenant_id);
             } else if (PKT_IS_IPV6(p)) {
                 PrintInet(AF_INET6, (const void *)GET_IPV6_SRC_ADDR(p),
                         srcip, sizeof(srcip));
                 PrintInet(AF_INET6, (const void *)GET_IPV6_DST_ADDR(p),
                         dstip, sizeof(dstip));
+                src_net_info = NetworkTreeGetIPv6InfoAsJSON((uint8_t *)GET_IPV6_SRC_ADDR(p), p->tenant_id);
+                dst_net_info = NetworkTreeGetIPv6InfoAsJSON((uint8_t *)GET_IPV6_DST_ADDR(p), p->tenant_id);
             }
             sp = p->sp;
             dp = p->dp;
@@ -458,11 +466,15 @@ void JsonFiveTuple(const Packet *p, enum OutputJsonLogDirection dir, json_t *js)
                             srcip, sizeof(srcip));
                     PrintInet(AF_INET, (const void *)GET_IPV4_DST_ADDR_PTR(p),
                             dstip, sizeof(dstip));
+                    src_net_info = NetworkTreeGetIPv4InfoAsJSON((uint8_t *)GET_IPV4_SRC_ADDR_PTR(p), p->tenant_id);
+                    dst_net_info = NetworkTreeGetIPv4InfoAsJSON((uint8_t *)GET_IPV4_DST_ADDR_PTR(p), p->tenant_id);
                 } else if (PKT_IS_IPV6(p)) {
                     PrintInet(AF_INET6, (const void *)GET_IPV6_SRC_ADDR(p),
                             srcip, sizeof(srcip));
                     PrintInet(AF_INET6, (const void *)GET_IPV6_DST_ADDR(p),
                             dstip, sizeof(dstip));
+                    src_net_info = NetworkTreeGetIPv6InfoAsJSON((uint8_t *)GET_IPV6_SRC_ADDR(p), p->tenant_id);
+                    dst_net_info = NetworkTreeGetIPv6InfoAsJSON((uint8_t *)GET_IPV6_DST_ADDR(p), p->tenant_id);
                 }
                 sp = p->sp;
                 dp = p->dp;
@@ -472,11 +484,15 @@ void JsonFiveTuple(const Packet *p, enum OutputJsonLogDirection dir, json_t *js)
                             srcip, sizeof(srcip));
                     PrintInet(AF_INET, (const void *)GET_IPV4_SRC_ADDR_PTR(p),
                             dstip, sizeof(dstip));
+                    src_net_info = NetworkTreeGetIPv4InfoAsJSON((uint8_t *)GET_IPV4_DST_ADDR_PTR(p), p->tenant_id);
+                    dst_net_info = NetworkTreeGetIPv4InfoAsJSON((uint8_t *)GET_IPV4_SRC_ADDR_PTR(p), p->tenant_id);
                 } else if (PKT_IS_IPV6(p)) {
                     PrintInet(AF_INET6, (const void *)GET_IPV6_DST_ADDR(p),
                             srcip, sizeof(srcip));
                     PrintInet(AF_INET6, (const void *)GET_IPV6_SRC_ADDR(p),
                             dstip, sizeof(dstip));
+                    src_net_info = NetworkTreeGetIPv6InfoAsJSON((uint8_t *)GET_IPV6_DST_ADDR(p), p->tenant_id);
+                    dst_net_info = NetworkTreeGetIPv6InfoAsJSON((uint8_t *)GET_IPV6_SRC_ADDR(p), p->tenant_id);
                 }
                 sp = p->dp;
                 dp = p->sp;
@@ -549,6 +565,19 @@ void JsonFiveTuple(const Packet *p, enum OutputJsonLogDirection dir, json_t *js)
     }
 
     json_object_set_new(js, "proto", json_string(proto));
+
+    if (src_net_info != NULL || dst_net_info != NULL) {
+        json_t *netinfojs = json_object();
+        if (netinfojs != NULL) {
+            if (src_net_info != NULL) {
+                json_object_set_new(netinfojs, "src", src_net_info);
+            }
+            if (dst_net_info != NULL) {
+                json_object_set_new(netinfojs, "dest", dst_net_info);
+            }
+            json_object_set_new(js, "net_info", netinfojs);
+        }
+    }
 }
 
 static void CreateJSONCommunityFlowIdv4(json_t *js, const Flow *f,
