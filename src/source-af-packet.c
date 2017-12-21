@@ -49,6 +49,7 @@
 #include "util-cpu.h"
 #include "util-debug.h"
 #include "util-device.h"
+#include "util-ebpf.h"
 #include "util-error.h"
 #include "util-privs.h"
 #include "util-optimize.h"
@@ -236,6 +237,11 @@ typedef struct AFPThreadVars_
     LiveDevice *livedev;
     /* data link type for the thread */
     uint32_t datalink;
+
+#ifdef HAVE_PACKET_EBPF
+    int v4_map_fd;
+    int v6_map_fd;
+#endif
 
     unsigned int frame_offset;
 
@@ -2285,13 +2291,7 @@ static int AFPBypassCallback(Packet *p)
         inittime = curtime.tv_sec * 1000000000;
     }
     if (PKT_IS_IPV4(p)) {
-        /* FIXME cache this and handle error at cache time*/
-        int mapd = EBPFGetMapFDByName("flow_table_v4");
-        if (mapd == -1) {
-            SCLogNotice("Can't find eBPF map fd for '%s'", "flow_table_v4");
-            return 0;
-        }
-        /* FIXME error handling */
+        SCLogDebug("add an IPv4");
         struct flowv4_keys key = {};
         key.src = htonl(GET_IPV4_SRC_ADDR_U32(p));
         key.dst = htonl(GET_IPV4_DST_ADDR_U32(p));
@@ -2299,14 +2299,14 @@ static int AFPBypassCallback(Packet *p)
         key.port16[1] = GET_TCP_DST_PORT(p);
 
         key.ip_proto = IPV4_GET_IPPROTO(p);
-        if (AFPInsertHalfFlow(mapd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->ptv->v4_map_fd, &key, inittime) == 0) {
             return 0;
         }
         key.src = htonl(GET_IPV4_DST_ADDR_U32(p));
         key.dst = htonl(GET_IPV4_SRC_ADDR_U32(p));
         key.port16[0] = GET_TCP_DST_PORT(p);
         key.port16[1] = GET_TCP_SRC_PORT(p);
-        if (AFPInsertHalfFlow(mapd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->ptv->v4_map_fd, &key, inittime) == 0) {
             return 0;
         }
         return 1;
@@ -2314,16 +2314,7 @@ static int AFPBypassCallback(Packet *p)
     /* For IPv6 case we don't handle extended header in eBPF */
     if (PKT_IS_IPV6(p) && 
         ((IPV6_GET_NH(p) == IPPROTO_TCP) || (IPV6_GET_NH(p) == IPPROTO_UDP))) {
-        /* FIXME cache this and handle error at cache time*/
-        int mapd = EBPFGetMapFDByName("flow_table_v6");
-        int i = 0;
-        if (mapd == -1) {
-            SCLogNotice("Can't find eBPF map fd for '%s'", "flow_table_v6");
-            return 0;
-        }
         SCLogDebug("add an IPv6");
-        /* FIXME error handling */
-        /* FIXME filter out next hdr IPV6 packets */
         struct flowv6_keys key = {};
         for (i = 0; i < 4; i++) {
             key.src[i] = ntohl(GET_IPV6_SRC_ADDR(p)[i]);
@@ -2332,7 +2323,7 @@ static int AFPBypassCallback(Packet *p)
         key.port16[0] = GET_TCP_SRC_PORT(p);
         key.port16[1] = GET_TCP_DST_PORT(p);
         key.ip_proto = IPV6_GET_NH(p);
-        if (AFPInsertHalfFlow(mapd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(ptv->v6_map_fd, &key, inittime) == 0) {
             return 0;
         }
         for (i = 0; i < 4; i++) {
@@ -2341,7 +2332,7 @@ static int AFPBypassCallback(Packet *p)
         }
         key.port16[0] = GET_TCP_DST_PORT(p);
         key.port16[1] = GET_TCP_SRC_PORT(p);
-        if (AFPInsertHalfFlow(mapd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(ptv->v6_map_fd, &key, inittime) == 0) {
             return 0;
         }
         return 1;
@@ -2371,13 +2362,6 @@ static int AFPXDPBypassCallback(Packet *p)
         inittime = curtime.tv_sec * 1000000000;
     }
     if (PKT_IS_IPV4(p)) {
-        /* FIXME cache this and handle error at cache time*/
-        int mapd = EBPFGetMapFDByName("flow_table_v4");
-        if (mapd == -1) {
-            SCLogNotice("Can't find eBPF map fd for '%s'", "flow_table_v4");
-            return 0;
-        }
-        /* FIXME error handling */
         struct flowv4_keys key = {};
         key.src = GET_IPV4_SRC_ADDR_U32(p);
         key.dst = GET_IPV4_DST_ADDR_U32(p);
@@ -2385,14 +2369,14 @@ static int AFPXDPBypassCallback(Packet *p)
         key.port16[0] = htons(GET_TCP_SRC_PORT(p));
         key.port16[1] = htons(GET_TCP_DST_PORT(p));
         key.ip_proto = IPV4_GET_IPPROTO(p);
-        if (AFPInsertHalfFlow(mapd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->ptv->v4_map_fd, &key, inittime) == 0) {
             return 0;
         }
         key.src = GET_IPV4_DST_ADDR_U32(p);
         key.dst = GET_IPV4_SRC_ADDR_U32(p);
         key.port16[0] = htons(GET_TCP_DST_PORT(p));
         key.port16[1] = htons(GET_TCP_SRC_PORT(p));
-        if (AFPInsertHalfFlow(mapd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->ptv->v4_map_fd, &key, inittime) == 0) {
             return 0;
         }
         return 1;
@@ -2400,13 +2384,6 @@ static int AFPXDPBypassCallback(Packet *p)
     /* For IPv6 case we don't handle extended header in eBPF */
     if (PKT_IS_IPV6(p) && 
         ((IPV6_GET_NH(p) == IPPROTO_TCP) || (IPV6_GET_NH(p) == IPPROTO_UDP))) {
-        /* FIXME cache this and handle error at cache time*/
-        int mapd = EBPFGetMapFDByName("flow_table_v6");
-        int i = 0;
-        if (mapd == -1) {
-            SCLogNotice("Can't find eBPF map fd for '%s'", "flow_table_v6");
-            return 0;
-        }
         SCLogDebug("add an IPv6");
         /* FIXME error handling */
         /* FIXME filter out next hdr IPV6 packets */
@@ -2418,7 +2395,7 @@ static int AFPXDPBypassCallback(Packet *p)
         key.port16[0] = htons(GET_TCP_SRC_PORT(p));
         key.port16[1] = htons(GET_TCP_DST_PORT(p));
         key.ip_proto = IPV6_GET_NH(p);
-        if (AFPInsertHalfFlow(mapd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->ptv->v6_map_fd, &key, inittime) == 0) {
             return 0;
         }
         for (i = 0; i < 4; i++) {
@@ -2427,7 +2404,7 @@ static int AFPXDPBypassCallback(Packet *p)
         }
         key.port16[0] = htons(GET_TCP_DST_PORT(p));
         key.port16[1] = htons(GET_TCP_SRC_PORT(p));
-        if (AFPInsertHalfFlow(mapd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->ptv->v6_map_fd, &key, inittime) == 0) {
             return 0;
         }
         return 1;
@@ -2502,6 +2479,19 @@ TmEcode ReceiveAFPThreadInit(ThreadVars *tv, const void *initdata, void **data)
     ptv->ebpf_lb_fd = afpconfig->ebpf_lb_fd;
     ptv->ebpf_filter_fd = afpconfig->ebpf_filter_fd;
     ptv->xdp_mode = afpconfig->xdp_mode;
+
+#ifdef HAVE_PACKET_EBPF
+    if (ptv->flags & (AFP_BYPASS|AFP_XDPBYPASS)) {
+        ptv->v4_map_fd = EBPFGetMapFDByName("flow_table_v4");
+        if (ptv->v4_map_fd == -1) {
+            SCLogError(SC_ERR_INVALID_VALUE, "Can't find eBPF map fd for '%s'", "flow_table_v4");
+        }
+        ptv->v6_map_fd = EBPFGetMapFDByName("flow_table_v6");
+        if (ptv->v6_map_fd  == -1) {
+            SCLogError(SC_ERR_INVALID_VALUE, "Can't find eBPF map fd for '%s'", "flow_table_v6");
+        }
+    }
+#endif
 
 #ifdef PACKET_STATISTICS
     ptv->capture_kernel_packets = StatsRegisterCounter("capture.kernel_packets",
