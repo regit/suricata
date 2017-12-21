@@ -962,6 +962,11 @@ static int AFPReadFromRing(AFPThreadVars *ptv)
                 SCReturnInt(AFP_FAILURE);
             }
         }
+
+#ifdef HAVE_PACKET_EBPF
+        p->afp_v.v4_map_fd = ptv->v4_map_fd;    
+        p->afp_v.v6_map_fd = ptv->v6_map_fd;    
+#endif
         /* Timestamp */
         p->ts.tv_sec = h.h2->tp_sec;
         p->ts.tv_usec = h.h2->tp_nsec/1000;
@@ -2299,14 +2304,14 @@ static int AFPBypassCallback(Packet *p)
         key.port16[1] = GET_TCP_DST_PORT(p);
 
         key.ip_proto = IPV4_GET_IPPROTO(p);
-        if (AFPInsertHalfFlow(p->ptv->v4_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, inittime) == 0) {
             return 0;
         }
         key.src = htonl(GET_IPV4_DST_ADDR_U32(p));
         key.dst = htonl(GET_IPV4_SRC_ADDR_U32(p));
         key.port16[0] = GET_TCP_DST_PORT(p);
         key.port16[1] = GET_TCP_SRC_PORT(p);
-        if (AFPInsertHalfFlow(p->ptv->v4_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, inittime) == 0) {
             return 0;
         }
         return 1;
@@ -2314,6 +2319,7 @@ static int AFPBypassCallback(Packet *p)
     /* For IPv6 case we don't handle extended header in eBPF */
     if (PKT_IS_IPV6(p) && 
         ((IPV6_GET_NH(p) == IPPROTO_TCP) || (IPV6_GET_NH(p) == IPPROTO_UDP))) {
+        int i;
         SCLogDebug("add an IPv6");
         struct flowv6_keys key = {};
         for (i = 0; i < 4; i++) {
@@ -2323,7 +2329,7 @@ static int AFPBypassCallback(Packet *p)
         key.port16[0] = GET_TCP_SRC_PORT(p);
         key.port16[1] = GET_TCP_DST_PORT(p);
         key.ip_proto = IPV6_GET_NH(p);
-        if (AFPInsertHalfFlow(ptv->v6_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v6_map_fd, &key, inittime) == 0) {
             return 0;
         }
         for (i = 0; i < 4; i++) {
@@ -2332,7 +2338,7 @@ static int AFPBypassCallback(Packet *p)
         }
         key.port16[0] = GET_TCP_DST_PORT(p);
         key.port16[1] = GET_TCP_SRC_PORT(p);
-        if (AFPInsertHalfFlow(ptv->v6_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v6_map_fd, &key, inittime) == 0) {
             return 0;
         }
         return 1;
@@ -2369,14 +2375,14 @@ static int AFPXDPBypassCallback(Packet *p)
         key.port16[0] = htons(GET_TCP_SRC_PORT(p));
         key.port16[1] = htons(GET_TCP_DST_PORT(p));
         key.ip_proto = IPV4_GET_IPPROTO(p);
-        if (AFPInsertHalfFlow(p->ptv->v4_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, inittime) == 0) {
             return 0;
         }
         key.src = GET_IPV4_DST_ADDR_U32(p);
         key.dst = GET_IPV4_SRC_ADDR_U32(p);
         key.port16[0] = htons(GET_TCP_DST_PORT(p));
         key.port16[1] = htons(GET_TCP_SRC_PORT(p));
-        if (AFPInsertHalfFlow(p->ptv->v4_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, inittime) == 0) {
             return 0;
         }
         return 1;
@@ -2385,8 +2391,7 @@ static int AFPXDPBypassCallback(Packet *p)
     if (PKT_IS_IPV6(p) && 
         ((IPV6_GET_NH(p) == IPPROTO_TCP) || (IPV6_GET_NH(p) == IPPROTO_UDP))) {
         SCLogDebug("add an IPv6");
-        /* FIXME error handling */
-        /* FIXME filter out next hdr IPV6 packets */
+        int i;
         struct flowv6_keys key = {};
         for (i = 0; i < 4; i++) {
             key.src[i] = GET_IPV6_SRC_ADDR(p)[i];
@@ -2395,7 +2400,7 @@ static int AFPXDPBypassCallback(Packet *p)
         key.port16[0] = htons(GET_TCP_SRC_PORT(p));
         key.port16[1] = htons(GET_TCP_DST_PORT(p));
         key.ip_proto = IPV6_GET_NH(p);
-        if (AFPInsertHalfFlow(p->ptv->v6_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v6_map_fd, &key, inittime) == 0) {
             return 0;
         }
         for (i = 0; i < 4; i++) {
@@ -2404,7 +2409,7 @@ static int AFPXDPBypassCallback(Packet *p)
         }
         key.port16[0] = htons(GET_TCP_DST_PORT(p));
         key.port16[1] = htons(GET_TCP_SRC_PORT(p));
-        if (AFPInsertHalfFlow(p->ptv->v6_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v6_map_fd, &key, inittime) == 0) {
             return 0;
         }
         return 1;
