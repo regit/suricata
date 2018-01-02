@@ -479,6 +479,20 @@ static void *ParseAFPConfig(const char *iface)
             if (ret != 0) {
                 SCLogError(SC_ERR_INVALID_VALUE,
                         "Error when setting up XDP");
+            } else {
+                /* Try to get the cpu-set key */
+                const char *cpuset;
+                if (ConfGetChildValueWithDefault(if_root, if_default, "cpu-set", &cpuset) == 1) {
+                    /* FIXME TODO Parse it add add CPUs to the correct map  */
+                    SCLogNotice("CPU map XDP");
+                    int i;
+                    for (i = 0; i < 4; i++) {
+                        if (EBPFAddCPUToMap(aconf->iface, i) < 0) {
+                            SCLogError(SC_ERR_INVALID_VALUE,
+                                       "Unable to add CPU %d to set", i);
+                        }
+                    }
+                }
             }
         }
 #else
