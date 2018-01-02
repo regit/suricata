@@ -33,6 +33,9 @@
 
 #define LINUX_VERSION_CODE 263682
 
+#define USE_CPUMAP          1
+#define CPUMAP_MAX_CPUS     8
+
 struct vlan_hdr {
     __u16	h_vlan_TCI;
     __u16	h_vlan_encapsulated_proto;
@@ -77,6 +80,16 @@ struct bpf_map_def SEC("maps") flow_table_v6 = {
     .value_size = sizeof(struct pair),
     .max_entries = 32768,
 };
+
+#if USE_CPUMAP
+/* Special map type that can XDP_REDIRECT frames to another CPU */
+struct bpf_map_def SEC("maps") cpu_map = {
+	.type		= BPF_MAP_TYPE_CPUMAP,
+	.key_size	= sizeof(__u32),
+	.value_size	= sizeof(__u32),
+	.max_entries	= CPUMAP_MAX_CPUS,
+};
+#endif
 
 static __always_inline int get_sport(void *trans_data, void *data_end,
         uint8_t protocol)
@@ -129,6 +142,9 @@ static int filter_ipv4(void *data, __u64 nh_off, void *data_end)
     int sport;
     struct flowv4_keys tuple;
     struct pair *value;
+#if USE_CPUMAP
+    int cpu_dest;
+#endif
 
     if ((void *)(iph + 1) > data_end)
         return XDP_PASS;
@@ -169,7 +185,12 @@ static int filter_ipv4(void *data, __u64 nh_off, void *data_end)
 
         return XDP_DROP;
     }
+#if USE_CPUMAP
+    cpu_dest = (tuple.src + tuple.dst) % CPUMAP_MAX_CPUS;
+	return bpf_redirect_map(&cpu_map, cpu_dest, 0);
+#else
     return XDP_PASS;
+#endif
 }
 
 static int filter_ipv6(void *data, __u64 nh_off, void *data_end)
@@ -179,6 +200,9 @@ static int filter_ipv6(void *data, __u64 nh_off, void *data_end)
     int sport;
     struct flowv6_keys tuple;
     struct pair *value;
+#if USE_CPUMAP
+    int cpu_dest;
+#endif
 
     if ((void *)(ip6h + 1) > data_end)
         return 0;
@@ -210,7 +234,12 @@ static int filter_ipv6(void *data, __u64 nh_off, void *data_end)
         value->time = bpf_ktime_get_ns();
         return XDP_DROP;
     }
+#if USE_CPUMAP
+    cpu_dest = (tuple.src[0] + tuple.dst[0] + tuple.src[3] + tuple.dst[3]) % CPUMAP_MAX_CPUS;
+	return bpf_redirect_map(&cpu_map, cpu_dest, 0);
+#else
     return XDP_PASS;
+#endif
 }
 
 int SEC("xdp") xdp_hashfilter(struct xdp_md *ctx)

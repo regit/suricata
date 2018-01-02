@@ -447,4 +447,28 @@ void EBPFRegisterExtension(void)
     g_livedev_storage_id = LiveDevStorageRegister("bpfmap", sizeof(void *), NULL, BpfMapsInfoFree);
 }
 
+
+#ifdef HAVE_PACKET_XDP
+
+int EBPFAddCPUToMap(const char *iface, uint32_t i)
+{
+    int cpumap = EBPFGetMapFDByName(iface, "cpu_map");
+    uint32_t queue_size = 4096;
+    int ret;
+
+    if (cpumap < 0) {
+        SCLogError(SC_ERR_AFP_CREATE, "Can't find cpu_map");
+        return -1;
+    }
+    ret = bpf_map_update_elem(cpumap, &i, &queue_size, 0);
+    if (ret) {
+        SCLogError(SC_ERR_AFP_CREATE, "Create CPU entry failed (err:%d)", ret);
+        return -1;
+    }
+
+    return 0;
+}
+
+#endif /* HAVE_PACKET_XDP */
+
 #endif

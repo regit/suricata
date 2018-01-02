@@ -97,6 +97,14 @@ static void AFPDerefConfig(void *conf)
     }
 }
 
+static void EBPFRedirectMapAddCPU(int i, void *data)
+{
+    if (EBPFAddCPUToMap(data, i) < 0) {
+        SCLogError(SC_ERR_INVALID_VALUE,
+                "Unable to add CPU %d to set", i);
+    }
+}
+
 /* if cluster id is not set, assign it automagically, uniq value per
  * interface. */
 static int cluster_id_auto = 1;
@@ -479,6 +487,20 @@ static void *ParseAFPConfig(const char *iface)
             if (ret != 0) {
                 SCLogWarning(SC_ERR_INVALID_VALUE,
                              "Error when setting up XDP");
+            } else {
+                /* Try to get the cpu-set key */
+                const char *cpuset;
+                if (ConfGetChildValueWithDefault(if_root, if_default, "cpu-set", &cpuset) == 1) {
+                    SCLogConfig("Setting up CPU map XDP");
+                    ConfNode *node = ConfGetChildWithDefault(if_root, if_default, "cpu-set");
+                    if (node == NULL) {
+                        SCLogError(SC_ERR_INVALID_VALUE, "Should not be there");
+                    } else {
+                        BuildCpusetWithCallback("cpu-set", node,
+                                                EBPFRedirectMapAddCPU,
+                                                aconf->iface);
+                    }
+                }
             }
         }
 #else
