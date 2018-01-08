@@ -74,6 +74,8 @@ void EBPFRegisterExtension(void);
 
 void EBPFBuildCPUSet(ConfNode *node, char *iface);
 
+int EBPFSetPeerIface(const char *iface, const char *out_iface);
+
 #endif
 
 #endif

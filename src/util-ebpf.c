@@ -571,6 +571,29 @@ void EBPFBuildCPUSet(ConfNode *node, char *iface)
                         BPF_ANY);
 }
 
+int EBPFSetPeerIface(const char *iface, const char *out_iface)
+{
+    int mapfd = EBPFGetMapFDByName(iface, "cpus_count");
+    if (mapfd < 0) {
+        SCLogError(SC_ERR_INVALID_VALUE,
+                "Unable to find 'cpus_count' map");
+        return -1;
+    }
+    int key0 = 0;
+    unsigned int peer_index = if_nametoindex(out_iface);
+    if (peer_index == 0) {
+        SCLogError(SC_ERR_INVALID_VALUE, "No iface '%s'", out_iface);
+        return -1;
+    }
+    int ret = bpf_map_update_elem(mapfd, &key0, &peer_index,
+                                  BPF_ANY);
+    if (ret) {
+        SCLogError(SC_ERR_AFP_CREATE, "Create peer entry failed (err:%d)", ret);
+        return -1;
+    }
+    return 0;
+}
+
 #endif /* HAVE_PACKET_XDP */
 
 #endif

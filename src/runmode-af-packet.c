@@ -492,6 +492,10 @@ static void *ParseAFPConfig(const char *iface)
                     }
                 }
             }
+            /* we have a peer and we use bypass so we can set up XDP iface redirect */
+            if (aconf->out_iface) {
+                EBPFSetPeerIface(aconf->iface, aconf->out_iface);
+            }
         }
 #else
         SCLogError(SC_ERR_UNIMPLEMENTED, "XDP support is not built-in");
