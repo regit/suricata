@@ -2362,6 +2362,7 @@ static int AFPBypassCallback(Packet *p)
         if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, inittime) == 0) {
             return 0;
         }
+        /* FIXME we need to bypass the other side ? */
         return 1;
     }
     /* For IPv6 case we don't handle extended header in eBPF */
