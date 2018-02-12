@@ -5,7 +5,7 @@ Introduction
 ------------
 
 Multi tenancy support allows for different rule sets with different
-rule vars. These tenants can then be assigned to VLANs or interfaces
+rule vars and network information. These tenants can then be assigned to VLANs or interfaces
 (devices).
 
 YAML
@@ -145,6 +145,7 @@ The following settings are per tenant:
 * threshold-file
 * address-vars
 * port-vars
+* network-info
 
 Unix Socket
 -----------
