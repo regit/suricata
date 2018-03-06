@@ -232,11 +232,11 @@ static int __always_inline filter_ipv4(void *data, __u64 nh_off, void *data_end)
     }
 
 #if BUILD_CPUMAP
-    /* IP-pairs + protocol (UDP/TCP/ICMP) hit same CPU */
-    cpu_hash = tuple.src + tuple.dst;
-    cpu_hash = SuperFastHash((char *)&cpu_hash, 4, INITVAL + iph->protocol);
-
     if (cpu_max && *cpu_max) {
+        /* IP-pairs + protocol (UDP/TCP/ICMP) hit same CPU */
+        cpu_hash = tuple.src + tuple.dst;
+        cpu_hash = SuperFastHash((char *)&cpu_hash, 4, INITVAL + iph->protocol);
+
         cpu_dest = cpu_hash % *cpu_max;
         cpu_selected = bpf_map_lookup_elem(&cpus_available, &cpu_dest);
         if (!cpu_selected)
@@ -306,14 +306,14 @@ static int __always_inline filter_ipv6(void *data, __u64 nh_off, void *data_end)
     }
 
 #if BUILD_CPUMAP
-    /* IP-pairs + protocol (UDP/TCP/ICMP) hit same CPU */
-    cpu_hash  = tuple.src[0] + tuple.dst[0];
-    cpu_hash += tuple.src[1] + tuple.dst[1];
-    cpu_hash += tuple.src[2] + tuple.dst[2];
-    cpu_hash += tuple.src[3] + tuple.dst[3];
-    cpu_hash = SuperFastHash((char *)&cpu_hash, 4, ip6h->nexthdr);
-
     if (cpu_max && *cpu_max) {
+        /* IP-pairs + protocol (UDP/TCP/ICMP) hit same CPU */
+        cpu_hash  = tuple.src[0] + tuple.dst[0];
+        cpu_hash += tuple.src[1] + tuple.dst[1];
+        cpu_hash += tuple.src[2] + tuple.dst[2];
+        cpu_hash += tuple.src[3] + tuple.dst[3];
+        cpu_hash = SuperFastHash((char *)&cpu_hash, 4, ip6h->nexthdr);
+
         cpu_dest = cpu_hash % *cpu_max;
         cpu_selected = bpf_map_lookup_elem(&cpus_available, &cpu_dest);
         if (!cpu_selected)
