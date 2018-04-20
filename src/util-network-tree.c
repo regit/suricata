@@ -612,6 +612,7 @@ void NetworkTreeInit(void)
         }
         if (NetworkTreeParseConfig("network-tree-path", master->tree) != 0) {
             NetworkTreeFreeInstance(master->tree);
+            master->tree = NULL;
         }
     }
     return;
