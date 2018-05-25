@@ -295,6 +295,7 @@ typedef struct AFPThreadVars_
     uint8_t xdp_mode;
 
     int map_fd[MAX_MAPS];
+    unsigned int nr_cpus;
 
 } AFPThreadVars;
 
@@ -315,8 +316,6 @@ static int AFPDerefSocket(AFPPeer* peer);
 static int AFPRefSocket(AFPPeer* peer);
 
 
-static unsigned int nr_cpus;
-
 /**
  * \brief Registration Function for RecieveAFP.
  * \todo Unit tests are needed for this module.
@@ -334,7 +333,6 @@ void TmModuleReceiveAFPRegister (void)
     tmm_modules[TMM_RECEIVEAFP].cap_flags = SC_CAP_NET_RAW;
     tmm_modules[TMM_RECEIVEAFP].flags = TM_FLAG_RECEIVE_TM;
 
-    nr_cpus = UtilCpuGetNumProcessorsConfigured();
 }
 
 
@@ -636,6 +634,7 @@ static int AFPRead(AFPThreadVars *ptv)
 #ifdef HAVE_PACKET_EBPF
         p->afp_v.v4_map_fd = ptv->v4_map_fd;
         p->afp_v.v6_map_fd = ptv->v6_map_fd;
+        p->afp_v.nr_cpus = ptv->nr_cpus;
 #endif
     }
     if (ptv->flags & AFP_XDPBYPASS) {
@@ -643,6 +642,7 @@ static int AFPRead(AFPThreadVars *ptv)
 #ifdef HAVE_PACKET_EBPF
         p->afp_v.v4_map_fd = ptv->v4_map_fd;
         p->afp_v.v6_map_fd = ptv->v6_map_fd;
+        p->afp_v.nr_cpus = ptv->nr_cpus;
 #endif
     }
 
@@ -919,6 +919,7 @@ static int AFPReadFromRing(AFPThreadVars *ptv)
 #ifdef HAVE_PACKET_EBPF
             p->afp_v.v4_map_fd = ptv->v4_map_fd;
             p->afp_v.v6_map_fd = ptv->v6_map_fd;
+            p->afp_v.nr_cpus = ptv->nr_cpus;
 #endif
         }
         if (ptv->flags & AFP_XDPBYPASS) {
@@ -926,6 +927,7 @@ static int AFPReadFromRing(AFPThreadVars *ptv)
 #ifdef HAVE_PACKET_EBPF
             p->afp_v.v4_map_fd = ptv->v4_map_fd;
             p->afp_v.v6_map_fd = ptv->v6_map_fd;
+            p->afp_v.nr_cpus = ptv->nr_cpus;
 #endif
         }
 
@@ -1046,6 +1048,7 @@ static inline int AFPParsePacketV3(AFPThreadVars *ptv, struct tpacket_block_desc
 #ifdef HAVE_PACKET_EBPF
         p->afp_v.v4_map_fd = ptv->v4_map_fd;
         p->afp_v.v6_map_fd = ptv->v6_map_fd;
+        p->afp_v.nr_cpus = ptv->nr_cpus;
 #endif
     }
     if (ptv->flags & AFP_XDPBYPASS) {
@@ -1053,6 +1056,7 @@ static inline int AFPParsePacketV3(AFPThreadVars *ptv, struct tpacket_block_desc
 #ifdef HAVE_PACKET_EBPF
         p->afp_v.v4_map_fd = ptv->v4_map_fd;
         p->afp_v.v6_map_fd = ptv->v6_map_fd;
+        p->afp_v.nr_cpus = ptv->nr_cpus;
 #endif
     }
 
@@ -2271,10 +2275,13 @@ TmEcode AFPSetBPFFilter(AFPThreadVars *ptv)
  *
  * \param mapfd file descriptor of the protocol bypass table
  * \param key data to use as key in the table
- * \param inittime time of creation of the entry (in monotonic clock)
+ * \param pkts_cnt packet count for the half flow
+ * \param bytes_cnt bytes count for the half flow
  * \return 0 in case of error, 1 if success
  */
-static int AFPInsertHalfFlow(int mapd, void *key, uint64_t inittime)
+static int AFPInsertHalfFlow(int mapd, void *key, uint32_t hash,
+                             uint64_t pkts_cnt, uint64_t bytes_cnt,
+                             unsigned int nr_cpus)
 {
     struct pair value[nr_cpus];
     unsigned int i;
@@ -2284,13 +2291,16 @@ static int AFPInsertHalfFlow(int mapd, void *key, uint64_t inittime)
     }
 
     /* We use a per CPU structure so we have to set an array of values as the kernel
-     * is not duplicating the data on each CPU by itself. */
-    for (i = 0; i < nr_cpus; i++) {
-        value[i].time = inittime;
+     * is not duplicating the data on each CPU by itself. We set the first entry to
+     * the actual flow pkts and bytes count as we need to continue from actual point
+     * to detect an absence of packets in the future. */
+    value[0].packets = pkts_cnt;
+    value[0].bytes = bytes_cnt;
+    value[0].hash = hash;
+    for (i = 1; i < nr_cpus; i++) {
         value[i].packets = 0;
         value[i].bytes = 0;
     }
-    SCLogDebug("Inserting element in eBPF mapping: %lu", inittime);
     if (bpf_map_update_elem(mapd, key, value, BPF_NOEXIST) != 0) {
         switch (errno) {
             /* no more place in the hash */
@@ -2340,14 +2350,6 @@ static int AFPBypassCallback(Packet *p)
     if (IS_TUNNEL_PKT(p)) {
         return 0;
     }
-    struct timespec curtime;
-    uint64_t inittime = 0;
-    /* In eBPF, the function that we have use to get time return the
-     * monotonic clock (the time since start of the computer). So we
-     * can't use the timestamp of the packet. */
-    if (clock_gettime(CLOCK_MONOTONIC, &curtime) == 0) {
-        inittime = curtime.tv_sec * 1000000000;
-    }
     if (PKT_IS_IPV4(p)) {
         SCLogDebug("add an IPv4");
         if (p->afp_v.v4_map_fd == -1) {
@@ -2360,17 +2362,19 @@ static int AFPBypassCallback(Packet *p)
         key.port16[1] = GET_TCP_DST_PORT(p);
 
         key.ip_proto = IPV4_GET_IPPROTO(p);
-        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, p->flow_hash, p->flow->todstpktcnt,
+                              p->flow->todstbytecnt, p->afp_v.nr_cpus) == 0) {
             return 0;
         }
         key.src = htonl(GET_IPV4_DST_ADDR_U32(p));
         key.dst = htonl(GET_IPV4_SRC_ADDR_U32(p));
         key.port16[0] = GET_TCP_DST_PORT(p);
         key.port16[1] = GET_TCP_SRC_PORT(p);
-        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, p->flow_hash, p->flow->tosrcpktcnt,
+                              p->flow->tosrcbytecnt, p->afp_v.nr_cpus) == 0) {
             return 0;
         }
-        EBPFUpdateFlow(p->flow, p);
+        EBPFUpdateFlow(p->flow, p, NULL);
         return 1;
     }
     /* For IPv6 case we don't handle extended header in eBPF */
@@ -2389,7 +2393,8 @@ static int AFPBypassCallback(Packet *p)
         key.port16[0] = GET_TCP_SRC_PORT(p);
         key.port16[1] = GET_TCP_DST_PORT(p);
         key.ip_proto = IPV6_GET_NH(p);
-        if (AFPInsertHalfFlow(p->afp_v.v6_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, p->flow_hash, p->flow->todstpktcnt,
+                              p->flow->todstbytecnt, p->afp_v.nr_cpus) == 0) {
             return 0;
         }
         for (i = 0; i < 4; i++) {
@@ -2398,10 +2403,11 @@ static int AFPBypassCallback(Packet *p)
         }
         key.port16[0] = GET_TCP_DST_PORT(p);
         key.port16[1] = GET_TCP_SRC_PORT(p);
-        if (AFPInsertHalfFlow(p->afp_v.v6_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, p->flow_hash, p->flow->tosrcpktcnt,
+                              p->flow->tosrcbytecnt, p->afp_v.nr_cpus) == 0) {
             return 0;
         }
-        EBPFUpdateFlow(p->flow, p);
+        EBPFUpdateFlow(p->flow, p, NULL);
         return 1;
     }
 #endif
@@ -2434,34 +2440,28 @@ static int AFPXDPBypassCallback(Packet *p)
     if (IS_TUNNEL_PKT(p)) {
         return 0;
     }
-    struct timespec curtime;
-    uint64_t inittime = 0;
-    /* In eBPF, the function that we have use to get time return the
-     * monotonic clock (the time since start of the computer). So we
-     * can't use the timestamp of the packet. */
-    if (clock_gettime(CLOCK_MONOTONIC, &curtime) == 0) {
-        inittime = curtime.tv_sec * 1000000000;
-    }
     if (PKT_IS_IPV4(p)) {
         struct flowv4_keys key = {};
         if (p->afp_v.v4_map_fd == -1) {
             return 0;
         }
-        key.src = GET_IPV4_SRC_ADDR_U32(p);
-        key.dst = GET_IPV4_DST_ADDR_U32(p);
+        key.src = p->flow->src.addr_data32[0];
+        key.dst = p->flow->dst.addr_data32[0];
         /* In the XDP filter we get port from parsing of packet and not from skb
          * (as in eBPF filter) so we need to pass from host to network order */
-        key.port16[0] = htons(GET_TCP_SRC_PORT(p));
-        key.port16[1] = htons(GET_TCP_DST_PORT(p));
+        key.port16[0] = htons(p->flow->sp);
+        key.port16[1] = htons(p->flow->dp);
         key.ip_proto = IPV4_GET_IPPROTO(p);
-        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, p->flow_hash, p->flow->todstpktcnt,
+                              p->flow->todstbytecnt, p->afp_v.nr_cpus) == 0) {
             return 0;
         }
-        key.src = GET_IPV4_DST_ADDR_U32(p);
-        key.dst = GET_IPV4_SRC_ADDR_U32(p);
-        key.port16[0] = htons(GET_TCP_DST_PORT(p));
-        key.port16[1] = htons(GET_TCP_SRC_PORT(p));
-        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, inittime) == 0) {
+        key.src = p->flow->dst.addr_data32[0];
+        key.dst = p->flow->src.addr_data32[0];
+        key.port16[0] = htons(p->flow->dp);
+        key.port16[1] = htons(p->flow->sp);
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, p->flow_hash, p->flow->tosrcpktcnt,
+                              p->flow->tosrcbytecnt, p->afp_v.nr_cpus) == 0) {
             return 0;
         }
         return 1;
@@ -2482,7 +2482,8 @@ static int AFPXDPBypassCallback(Packet *p)
         key.port16[0] = htons(GET_TCP_SRC_PORT(p));
         key.port16[1] = htons(GET_TCP_DST_PORT(p));
         key.ip_proto = IPV6_GET_NH(p);
-        if (AFPInsertHalfFlow(p->afp_v.v6_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, p->flow_hash, p->flow->todstpktcnt,
+                              p->flow->todstbytecnt, p->afp_v.nr_cpus) == 0) {
             return 0;
         }
         for (i = 0; i < 4; i++) {
@@ -2491,7 +2492,8 @@ static int AFPXDPBypassCallback(Packet *p)
         }
         key.port16[0] = htons(GET_TCP_DST_PORT(p));
         key.port16[1] = htons(GET_TCP_SRC_PORT(p));
-        if (AFPInsertHalfFlow(p->afp_v.v6_map_fd, &key, inittime) == 0) {
+        if (AFPInsertHalfFlow(p->afp_v.v4_map_fd, &key, p->flow_hash, p->flow->tosrcpktcnt,
+                              p->flow->tosrcbytecnt, p->afp_v.nr_cpus) == 0) {
             return 0;
         }
         return 1;
@@ -2566,6 +2568,7 @@ TmEcode ReceiveAFPThreadInit(ThreadVars *tv, const void *initdata, void **data)
     ptv->ebpf_lb_fd = afpconfig->ebpf_lb_fd;
     ptv->ebpf_filter_fd = afpconfig->ebpf_filter_fd;
     ptv->xdp_mode = afpconfig->xdp_mode;
+    ptv->nr_cpus = UtilCpuGetNumProcessorsConfigured();
 
 #ifdef HAVE_PACKET_EBPF
     if (ptv->flags & (AFP_BYPASS|AFP_XDPBYPASS)) {
@@ -2578,6 +2581,7 @@ TmEcode ReceiveAFPThreadInit(ThreadVars *tv, const void *initdata, void **data)
             SCLogError(SC_ERR_INVALID_VALUE, "Can't find eBPF map fd for '%s'", "flow_table_v6");
         }
     }
+    ptv->nr_cpus = afpconfig->ebpf_t_config.cpus_count;
 #endif
 
 #ifdef PACKET_STATISTICS
