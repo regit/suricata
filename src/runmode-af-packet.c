@@ -156,6 +156,9 @@ static void *ParseAFPConfig(const char *iface)
     aconf->copy_mode = AFP_COPY_MODE_NONE;
     aconf->block_timeout = 10;
     aconf->block_size = getpagesize() << AFP_BLOCK_SIZE_DEFAULT_ORDER;
+#ifdef HAVE_PACKET_EBPF
+    aconf->ebpf_t_config.cpus_count = UtilCpuGetNumProcessorsConfigured();
+#endif
 
     if (ConfGet("bpf-filter", &bpf_filter) == 1) {
         if (strlen(bpf_filter) > 0) {
@@ -408,8 +411,8 @@ static void *ParseAFPConfig(const char *iface)
                     aconf->iface);
             aconf->flags |= AFP_BYPASS;
             RunModeEnablesBypassManager();
-            BypassedFlowManagerRegisterCheckFunc(EBPFCheckBypassedFlowTimeout);
-            BypassedFlowManagerRegisterUpdateFunc(EBPFUpdateFlow);
+            BypassedFlowManagerRegisterCheckFunc(EBPFCheckBypassedFlowTimeout, (void *) &(aconf->ebpf_t_config));
+            BypassedFlowManagerRegisterUpdateFunc(EBPFUpdateFlow, NULL);
 #else
             SCLogError(SC_ERR_UNIMPLEMENTED, "Bypass set but eBPF support is not built-in");
 #endif
@@ -443,7 +446,8 @@ static void *ParseAFPConfig(const char *iface)
                     aconf->iface);
             aconf->flags |= AFP_XDPBYPASS;
             RunModeEnablesBypassManager();
-            BypassedFlowManagerRegisterCheckFunc(EBPFCheckBypassedFlowTimeout);
+            BypassedFlowManagerRegisterCheckFunc(EBPFCheckBypassedFlowTimeout, (void *) &(aconf->ebpf_t_config));
+            BypassedFlowManagerRegisterUpdateFunc(EBPFUpdateFlow, NULL);
 #else
             SCLogError(SC_ERR_UNIMPLEMENTED, "Bypass set but XDP support is not built-in");
 #endif
@@ -464,6 +468,15 @@ static void *ParseAFPConfig(const char *iface)
                              "Invalid xdp-mode value: '%s'", xdp_mode);
             }
         }
+
+        if (ConfGetChildValueBoolWithDefault(if_root, if_default, "no-percpu-hash", (int *)&boolval) == 1) {
+            if (boolval) {
+                SCLogConfig("Not using percpu hash on iface %s",
+                        aconf->iface);
+                aconf->ebpf_t_config.cpus_count = 1;
+            }
+        }
+
 #endif
     }
 
