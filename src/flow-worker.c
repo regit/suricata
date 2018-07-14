@@ -183,6 +183,7 @@ static TmEcode FlowWorker(ThreadVars *tv, Packet *p, void *data, PacketQueue *pr
             DEBUG_ASSERT_FLOW_LOCKED(p->flow);
             if (FlowUpdate(p) == TM_ECODE_DONE) {
                 FLOWLOCK_UNLOCK(p->flow);
+                FLOWWORKER_PROFILING_END(p, PROFILE_FLOWWORKER_FLOW);
                 return TM_ECODE_OK;
             }
         }
