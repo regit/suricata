@@ -35,44 +35,17 @@
 
 static __always_inline int ipv4_hash(struct __sk_buff *skb)
 {
-    __u32 nhoff;
-    __u32 src, dst;
-
-    nhoff = skb->cb[0];
-    src = load_word(skb, nhoff + offsetof(struct iphdr, saddr));
-    dst = load_word(skb, nhoff + offsetof(struct iphdr, daddr));
-
-#if 0
-    char fmt[] = "Got addr: %u -> %u\n";
-    bpf_trace_printk(fmt, sizeof(fmt), src, dst);
-    char fmt2[] = "Got hash %u\n";
-    bpf_trace_printk(fmt2, sizeof(fmt2), src + dst);
-#endif
-    return  src + dst;
+    return  skb->local_ip4 + skb->remote_ip4;
 }
 
 static __always_inline int ipv6_hash(struct __sk_buff *skb)
 {
-    __u32 nhoff;
-    __u32 src, dst, hash;
+    __u32 hash;
 
-    nhoff = skb->cb[0];
-    hash = 0;
-    src = load_word(skb, nhoff + offsetof(struct ipv6hdr, saddr) + 4 * 0 );
-    dst = load_word(skb, nhoff + offsetof(struct ipv6hdr, daddr) + 4 * 0 );
-    hash += src + dst;
-
-    src = load_word(skb, nhoff + offsetof(struct ipv6hdr, saddr) + 4 * 1 );
-    dst = load_word(skb, nhoff + offsetof(struct ipv6hdr, daddr) + 4 * 1 );
-    hash += src + dst;
-
-    src = load_word(skb, nhoff + offsetof(struct ipv6hdr, saddr) + 4 * 2 );
-    dst = load_word(skb, nhoff + offsetof(struct ipv6hdr, daddr) + 4 * 2 );
-    hash += src + dst;
-
-    src = load_word(skb, nhoff + offsetof(struct ipv6hdr, saddr) + 4 * 3 );
-    dst = load_word(skb, nhoff + offsetof(struct ipv6hdr, daddr) + 4 * 3 );
-    hash += src + dst;
+    hash = skb->local_ip6[0] + skb->remote_ip6[0];
+    hash += skb->local_ip6[1] + skb->remote_ip6[1];
+    hash += skb->local_ip6[2] + skb->remote_ip6[2];
+    hash += skb->local_ip6[3] + skb->remote_ip6[3];
 
     return hash;
 }
