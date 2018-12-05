@@ -341,6 +341,8 @@ fn smb_common_header(state: &SMBState, tx: &SMBTransaction) -> Json
                                     jso.set_string("uuid", &ifstr);
                                     let vstr = format!("{}.{}", i.ver, i.ver_min);
                                     jso.set_string("version", &vstr);
+                                    let ifstrname = dcerpc_uid_mapping(ifstr);
+                                    jso.set_string("uuid_name", &ifstrname);
 
                                     if i.acked {
                                         jso.set_integer("ack_result", i.ack_result as u64);
