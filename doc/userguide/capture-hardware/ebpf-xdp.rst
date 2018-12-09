@@ -359,18 +359,18 @@ Confirm you have the XDP filter engaged in the output (example)::
 Pinned maps usage
 -----------------
 
-Pinned maps can stay attached to the system if the creating process disappear and
+Pnned maps stay attached to the system if the creating process disappear and
 they can also be accessed by external tools. In Suricata bypass case, this can be
-used to keep active bypassed flow tables so Suricata is not hit by these flows when
-restarting. In the filter case, this can be used to maintain a map from tools outside
+used to keep active bypassed flow tables so Suricata is not hit by previsouly bypassed flows when
+restarting. In the socket filter case, this can be used to maintain a map from tools outside
 of Suricata.
 
-To used pinned maps, you first have to mount the pseudo filesystem ::
+To used pinned maps, you first have to mount the `bpf` pseudo filesystem ::
 
   sudo mount -t bpf none /sys/fs/bpf
 
 Pinned maps will be accessible as file from the `/sys/fs/bpf` directory. Suricata
-will pinned there under the name `suricata-$IFACE_NAME-$MAP_NAME`.
+will pinned them under the name `suricata-$IFACE_NAME-$MAP_NAME`.
 
 To active pinned maps for a interface, set `pinned-maps` to `true` in the `af-packet`
 configuration of this interface ::
@@ -380,10 +380,12 @@ configuration of this interface ::
 
 This option can be used to expose the maps of a socket filter to other processes.
 This allows for example, the external handling of a blacklist or white list of
-IP addresses. See ff
+IP addresses. See `scbpf` tool avalable in the `ebpf/scpbf` directory for an example
+of external list handling.
 
 In the case of XDP, the eBPF filter is attached to the interface so if you
-activate `pinned-maps` the eBPF will remain attached to the interface. 
+activate `pinned-maps` the eBPF will remain attached to the interface and
+the maps will remain accessible upon Suricata start.
 If XDP bypass is activated, Suricata will try at start to open the pinned maps
 `flow_v4_table` and `flow_v6_table`. If they are present, this means the XDP filter
 is still there and Suricata will just use them instead of attaching the XDP file to
@@ -399,6 +401,7 @@ for that will be used to check for the presence of the XDP filter ::
   - interface: eth3
     pinned-maps: true
     pinned-maps-name: ipv4_drop
+    xdp-filter-file:  /etc/suricata/ebpf/xdp_filter.bpf
 
 If XDP bypass is used in IPS mode stopping Suricata will trigger a interruption in the traffic.
 To fix that you can use the `pinned-maps-switch` option that will create a direct interface
@@ -408,6 +411,8 @@ is exiting but it can also be activated by an external monitoring tool ::
   - interface: eth3
     pinned-maps: true
     pinned-maps-switch: g_switch
+    xdp-filter-file:  /etc/suricata/ebpf/xdp_filter.bpf
+    bypass: true
 
 
 Getting live info about bypass
