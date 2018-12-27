@@ -128,64 +128,77 @@ typedef enum {
     HTTP_FIELD_VARY,
     HTTP_FIELD_WARNING,
     HTTP_FIELD_WWW_AUTHENTICATE,
+    HTTP_FIELD_REQUEST_METHOD,
+    HTTP_FIELD_REQUEST_PROTOCOL,
+    HTTP_FIELD_RESPONSE_STATUS,
+    HTTP_FIELD_RESPONSE_LOCATION,
+    HTTP_FIELD_RESPONSE_LENGTH,
     HTTP_FIELD_SIZE
 } HttpField;
+
+static json_t * ExtractFromHtp(htp_tx_t *tx, HttpField index);
 
 struct {
     const char *config_field;
     const char *htp_field;
     uint32_t flags;
+    json_t *(* ExtractFunc)(htp_tx_t *tx, HttpField index);
 } http_fields[] =  {
-    { "accept", "accept", LOG_HTTP_REQUEST },
-    { "accept_charset", "accept-charset", LOG_HTTP_REQUEST },
-    { "accept_encoding", "accept-encoding", LOG_HTTP_REQUEST },
-    { "accept_language", "accept-language", LOG_HTTP_REQUEST },
-    { "accept_datetime", "accept-datetime", LOG_HTTP_REQUEST },
-    { "authorization", "authorization", LOG_HTTP_REQUEST },
-    { "cache_control", "cache-control", LOG_HTTP_REQUEST },
-    { "cookie", "cookie", LOG_HTTP_REQUEST|LOG_HTTP_ARRAY },
-    { "from", "from", LOG_HTTP_REQUEST },
-    { "max_forwards", "max-forwards", LOG_HTTP_REQUEST },
-    { "origin", "origin", LOG_HTTP_REQUEST },
-    { "pragma", "pragma", LOG_HTTP_REQUEST },
-    { "proxy_authorization", "proxy-authorization", LOG_HTTP_REQUEST },
-    { "range", "range", LOG_HTTP_REQUEST },
-    { "te", "te", LOG_HTTP_REQUEST },
-    { "via", "via", LOG_HTTP_REQUEST },
-    { "x_requested_with", "x-requested-with", LOG_HTTP_REQUEST },
-    { "dnt", "dnt", LOG_HTTP_REQUEST },
-    { "x_forwarded_proto", "x-forwarded-proto", LOG_HTTP_REQUEST },
-    { "x_authenticated_user", "x-authenticated-user", LOG_HTTP_REQUEST },
-    { "x_flash_version", "x-flash-version", LOG_HTTP_REQUEST },
-    { "accept_range", "accept-range", 0 },
-    { "age", "age", 0 },
-    { "allow", "allow", 0 },
-    { "connection", "connection", 0 },
-    { "content_encoding", "content-encoding", 0 },
-    { "content_language", "content-language", 0 },
-    { "content_length", "content-length", 0 },
-    { "content_location", "content-location", 0 },
-    { "content_md5", "content-md5", 0 },
-    { "content_range", "content-range", 0 },
-    { "content_type", "content-type", 0 },
-    { "date", "date", 0 },
-    { "etag", "etags", 0 },
-    { "expires", "expires" , 0 },
-    { "last_modified", "last-modified", 0 },
-    { "link", "link", 0 },
-    { "location", "location", 0 },
-    { "proxy_authenticate", "proxy-authenticate", 0 },
-    { "referer", "referer", LOG_HTTP_EXTENDED|LOG_HTTP_REQUEST },
-    { "refresh", "refresh", 0 },
-    { "retry_after", "retry-after", 0 },
-    { "server", "server", 0 },
-    { "set_cookie", "set-cookie", 0 },
-    { "trailer", "trailer", 0 },
-    { "transfer_encoding", "transfer-encoding", 0 },
-    { "upgrade", "upgrade", 0 },
-    { "vary", "vary", 0 },
-    { "warning", "warning", 0 },
-    { "www_authenticate", "www-authenticate", 0 },
+    { "accept", "accept", LOG_HTTP_REQUEST, NULL },
+    { "accept_charset", "accept-charset", LOG_HTTP_REQUEST, NULL },
+    { "accept_encoding", "accept-encoding", LOG_HTTP_REQUEST, NULL },
+    { "accept_language", "accept-language", LOG_HTTP_REQUEST, NULL },
+    { "accept_datetime", "accept-datetime", LOG_HTTP_REQUEST, NULL },
+    { "authorization", "authorization", LOG_HTTP_REQUEST, NULL },
+    { "cache_control", "cache-control", LOG_HTTP_REQUEST, NULL },
+    { "cookie", "cookie", LOG_HTTP_REQUEST|LOG_HTTP_ARRAY, NULL },
+    { "from", "from", LOG_HTTP_REQUEST, NULL },
+    { "max_forwards", "max-forwards", LOG_HTTP_REQUEST, NULL },
+    { "origin", "origin", LOG_HTTP_REQUEST, NULL },
+    { "pragma", "pragma", LOG_HTTP_REQUEST, NULL },
+    { "proxy_authorization", "proxy-authorization", LOG_HTTP_REQUEST, NULL },
+    { "range", "range", LOG_HTTP_REQUEST, NULL },
+    { "te", "te", LOG_HTTP_REQUEST, NULL },
+    { "via", "via", LOG_HTTP_REQUEST, NULL },
+    { "x_requested_with", "x-requested-with", LOG_HTTP_REQUEST, NULL },
+    { "dnt", "dnt", LOG_HTTP_REQUEST, NULL },
+    { "x_forwarded_proto", "x-forwarded-proto", LOG_HTTP_REQUEST, NULL },
+    { "x_authenticated_user", "x-authenticated-user", LOG_HTTP_REQUEST, NULL },
+    { "x_flash_version", "x-flash-version", LOG_HTTP_REQUEST, NULL },
+    { "accept_range", "accept-range", 0, NULL },
+    { "age", "age", 0, NULL },
+    { "allow", "allow", 0, NULL },
+    { "connection", "connection", 0, NULL },
+    { "content_encoding", "content-encoding", 0, NULL },
+    { "content_language", "content-language", 0, NULL },
+    { "content_length", "content-length", 0, NULL },
+    { "content_location", "content-location", 0, NULL },
+    { "content_md5", "content-md5", 0, NULL },
+    { "content_range", "content-range", 0, NULL },
+    { "content_type", "content-type", 0, NULL },
+    { "date", "date", 0, NULL },
+    { "etag", "etags", 0, NULL },
+    { "expires", "expires" , 0, NULL },
+    { "last_modified", "last-modified", 0, NULL },
+    { "link", "link", 0, NULL },
+    { "location", "location", 0, NULL },
+    { "proxy_authenticate", "proxy-authenticate", 0, NULL },
+    { "referer", "referer", LOG_HTTP_EXTENDED|LOG_HTTP_REQUEST, NULL },
+    { "refresh", "refresh", 0, NULL },
+    { "retry_after", "retry-after", 0, NULL },
+    { "server", "server", 0, NULL },
+    { "set_cookie", "set-cookie", 0, NULL },
+    { "trailer", "trailer", 0, NULL },
+    { "transfer_encoding", "transfer-encoding", 0, NULL },
+    { "upgrade", "upgrade", 0, NULL },
+    { "vary", "vary", 0, NULL },
+    { "warning", "warning", 0, NULL },
+    { "www_authenticate", "www-authenticate", 0, NULL },
+    { "http_method", NULL, LOG_HTTP_EXTENDED, ExtractFromHtp },
+    { "protocol", NULL, LOG_HTTP_EXTENDED, ExtractFromHtp },
+    { "status", NULL, LOG_HTTP_EXTENDED, ExtractFromHtp },
+    { "redirect", "location", LOG_HTTP_EXTENDED, NULL },
+    { "length", NULL, LOG_HTTP_EXTENDED, ExtractFromHtp },
 };
 
 static void JsonHttpLogJSONBasic(json_t *js, htp_tx_t *tx)
@@ -268,6 +281,50 @@ static void JsonHttpLogJSONBasic(json_t *js, htp_tx_t *tx)
     }
 }
 
+static json_t * ExtractFromHtp(htp_tx_t *tx, HttpField index)
+{
+    json_t *value = NULL;
+    char *c;
+
+    switch (index - 1) {
+        case HTTP_FIELD_REQUEST_METHOD:
+            if (tx->request_method != NULL) {
+                c = bstr_util_strdup_to_c(tx->request_method);
+                if (c != NULL) {
+                    value = SCJsonString(c);
+                    SCFree(c);
+                }
+            }
+            break;
+        case HTTP_FIELD_REQUEST_PROTOCOL:
+            if (tx->request_protocol != NULL) {
+                c = bstr_util_strdup_to_c(tx->request_protocol);
+                if (c != NULL) {
+                    value = SCJsonString(c);
+                    SCFree(c);
+                }
+            }
+            break;
+        case HTTP_FIELD_RESPONSE_STATUS:
+            if (tx->response_status != NULL) {
+                c = bstr_util_strdup_to_c(tx->response_status);
+                if (c != NULL) {
+                    unsigned int val = strtoul(c, NULL, 10);
+                    value = json_integer(val);
+                    SCFree(c);
+                }
+            }
+            break;
+        case HTTP_FIELD_RESPONSE_LENGTH:
+            value = json_integer(tx->response_message_len);
+            break;
+        default:
+            SCLogError(SC_ERR_INVALID_VALUE, "Should not be there: %d", index);
+            break;
+    }
+    return value;
+}
+
 static void JsonHttpLogJSONCustom(LogHttpFileCtx *http_ctx, json_t *js, htp_tx_t *tx)
 {
     char *c;
@@ -286,14 +343,32 @@ static void JsonHttpLogJSONCustom(LogHttpFileCtx *http_ctx, json_t *js, htp_tx_t
                 htp_header_t *h_field = NULL;
                 if ((http_fields[f].flags & LOG_HTTP_REQUEST) != 0)
                 {
-                    if (tx->request_headers != NULL) {
-                        h_field = htp_table_get_c(tx->request_headers,
-                                                  http_fields[f].htp_field);
+                    if (http_fields[f].ExtractFunc == NULL) {
+                        if (tx->request_headers != NULL) {
+                            h_field = htp_table_get_c(tx->request_headers,
+                                    http_fields[f].htp_field);
+                        }
+                    } else {
+                        json_t *value = http_fields[f].ExtractFunc(tx, f);
+                        if (value) {
+                            json_object_set_new(js,
+                                                http_fields[f].config_field,
+                                                value);
+                        }
                     }
                 } else {
-                    if (tx->response_headers != NULL) {
-                        h_field = htp_table_get_c(tx->response_headers,
-                                                  http_fields[f].htp_field);
+                    if (http_fields[f].ExtractFunc == NULL) {
+                        if (tx->response_headers != NULL) {
+                            h_field = htp_table_get_c(tx->response_headers,
+                                    http_fields[f].htp_field);
+                        }
+                    } else {
+                        json_t *value = http_fields[f].ExtractFunc(tx, f);
+                        if (value) {
+                            json_object_set_new(js,
+                                                http_fields[f].config_field,
+                                                value);
+                        }
                     }
                 }
                 if (h_field != NULL) {
@@ -651,7 +726,8 @@ static OutputInitResult OutputHttpLogInitSub(ConfNode *conf, OutputCtx *parent_c
                     {
                         if ((strcmp(http_fields[f].config_field,
                                    field->val) == 0) ||
-                            (strcasecmp(http_fields[f].htp_field,
+                            (http_fields[f].htp_field &&
+                             strcasecmp(http_fields[f].htp_field,
                                         field->val) == 0))
                         {
                             http_ctx->fields |= (1ULL<<f);
