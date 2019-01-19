@@ -172,7 +172,6 @@ static int EBPFLoadPinnedMapsFile(LiveDevice *livedev, const char *file)
 
 static int EBPFLoadPinnedMaps(LiveDevice *livedev, uint8_t flags)
 {
-    int ret = -1;
     int fd_v4 = -1, fd_v6 = -1;
 
     /* Get flow v4 table */
@@ -200,8 +199,9 @@ static int EBPFLoadPinnedMaps(LiveDevice *livedev, uint8_t flags)
     bpf_map_data->array[0].name = SCStrdup("flow_table_v4");
     bpf_map_data->array[1].fd = fd_v6;
     bpf_map_data->array[1].name = SCStrdup("flow_table_v6");
+    bpf_map_data->last = 2;
 
-    return ret;
+    return 0;
 }
 
 /**
