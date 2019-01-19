@@ -183,9 +183,9 @@ static int EBPFLoadPinnedMaps(LiveDevice *livedev, uint8_t flags)
 
     /* Get flow v6 table */
     fd_v6 = EBPFLoadPinnedMapsFile(livedev, "flow_table_v6");
-    if (ret < 0) {
+    if (fd_v6 < 0) {
         SCLogWarning(SC_ERR_INVALID_ARGUMENT,
-                     "Found a flow_table_v4 but no flow_table_v6");
+                     "Found a flow_table_v4 map but no flow_table_v6 map");
         return fd_v6;
     }
 
