@@ -27,6 +27,8 @@
 
 #include "bpf_helpers.h"
 
+#define DEBUG 0
+
 #define LINUX_VERSION_CODE 263682
 
 struct bpf_map_def SEC("maps") ipv4_drop = {
@@ -44,7 +46,7 @@ int SEC("filter") hashfilter(struct __sk_buff *skb) {
     ip = load_word(skb, nhoff + offsetof(struct iphdr, saddr));
     value = bpf_map_lookup_elem(&ipv4_drop, &ip);
     if (value) {
-#if 1
+#if DEBUG
         char fmt[] = "Found value for saddr: %u\n";
         bpf_trace_printk(fmt, sizeof(fmt), value);
 #endif
@@ -55,7 +57,7 @@ int SEC("filter") hashfilter(struct __sk_buff *skb) {
     ip = load_word(skb, nhoff + offsetof(struct iphdr, daddr));
     value = bpf_map_lookup_elem(&ipv4_drop, &ip);
     if (value) {
-#if 1
+#if DEBUG
         char fmt[] = "Found value for daddr: %u\n";
         bpf_trace_printk(fmt, sizeof(fmt), value);
 #endif
@@ -63,7 +65,7 @@ int SEC("filter") hashfilter(struct __sk_buff *skb) {
         return 0;
     }
 
-#if 1
+#if DEBUG
     char fmt[] = "Nothing so ok\n";
     bpf_trace_printk(fmt, sizeof(fmt));
 #endif
