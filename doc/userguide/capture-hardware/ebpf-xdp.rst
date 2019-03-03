@@ -76,7 +76,7 @@ libbpf
 
 Suricata uses libbpf to interact with eBPF and XDP ::
 
- git clone https://github.com/regit/libbpf/libbpf.git
+ git clone https://github.com/libbpf/libbpf.git
 
 Now, you can build and install the library ::
 
