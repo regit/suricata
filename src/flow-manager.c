@@ -222,6 +222,7 @@ static inline uint32_t FlowGetFlowTimeout(const Flow *f, enum FlowState state)
             timeout = flow_timeouts[f->protomap].closed_timeout;
             break;
         case FLOW_STATE_CAPTURE_BYPASSED:
+        case FLOW_STATE_MAP_BYPASSED:
             timeout = FLOW_BYPASSED_TIMEOUT;
             break;
         case FLOW_STATE_LOCAL_BYPASSED:
@@ -281,6 +282,7 @@ static int FlowManagerFlowTimedOut(Flow *f, struct timeval *ts)
     if (!(f->flags & FLOW_TIMEOUT_REASSEMBLY_DONE) &&
             SC_ATOMIC_GET(f->flow_state) != FLOW_STATE_CAPTURE_BYPASSED &&
             SC_ATOMIC_GET(f->flow_state) != FLOW_STATE_LOCAL_BYPASSED &&
+            SC_ATOMIC_GET(f->flow_state) != FLOW_STATE_MAP_BYPASSED &&
             FlowForceReassemblyNeedReassembly(f, &server, &client) == 1) {
         FlowForceReassemblyForFlow(f, server, client);
         return 0;
@@ -369,6 +371,8 @@ static uint32_t FlowManagerHashRowTimeout(Flow *f, struct timeval *ts,
                 f->flow_end_flags |= FLOW_END_FLAG_STATE_BYPASSED;
             else if (state == FLOW_STATE_CAPTURE_BYPASSED)
                 f->flow_end_flags |= FLOW_END_FLAG_STATE_BYPASSED;
+            else if (state == FLOW_STATE_MAP_BYPASSED)
+                f->flow_end_flags |= FLOW_END_FLAG_STATE_BYPASSED;
 
             if (emergency)
                 f->flow_end_flags |= FLOW_END_FLAG_EMERGENCY;
@@ -394,6 +398,7 @@ static uint32_t FlowManagerHashRowTimeout(Flow *f, struct timeval *ts,
                     break;
                 case FLOW_STATE_LOCAL_BYPASSED:
                 case FLOW_STATE_CAPTURE_BYPASSED:
+                case FLOW_STATE_MAP_BYPASSED:
                     counters->byp++;
                     break;
             }
