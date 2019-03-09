@@ -50,8 +50,8 @@
 #define RSS_QUEUE_NUMBERS   32
 
 struct vlan_hdr {
-    __u16	h_vlan_TCI;
-    __u16	h_vlan_encapsulated_proto;
+    __be16	h_vlan_TCI;
+    __be16	h_vlan_encapsulated_proto;
 };
 
 struct flowv4_keys {
