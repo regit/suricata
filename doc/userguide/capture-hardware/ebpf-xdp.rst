@@ -259,7 +259,7 @@ also use the ``/etc/suricata/ebpf/xdp_filter.bpf`` (in our example TCP offloadin
     use-mmap: yes
     ring-size: 200000
     # Uncomment the following if you are using hardware XDP with
-    # card like Netronome
+    # a card like Netronome
     # no-percpu-hash: yes 
 
 
@@ -368,7 +368,7 @@ Confirm you have the XDP filter engaged in the output (example)::
 Pinned maps usage
 -----------------
 
-Pinned maps stay attached to the system if the creating process disappear and
+Pinned maps stay attached to the system if the creating process disappears and
 they can also be accessed by external tools. In Suricata bypass case, this can be
 used to keep active bypassed flow tables so Suricata is not hit by previsouly bypassed flows when
 restarting. In the socket filter case, this can be used to maintain a map from tools outside
@@ -426,7 +426,7 @@ switch map will be `/sys/fs/bpf/suricata-eth0-global_bypass`.
 Hardware bypass with Netronome
 ------------------------------
 
-Netronome card supports hardware bypass. In this case the eBPF code is running in the card
+Netronome cards support hardware bypass. In this case the eBPF code is running in the card
 itself. This introduces some architectural differences compared to driver mode and the configuration
 and eBPF filter need to be updated.
 
