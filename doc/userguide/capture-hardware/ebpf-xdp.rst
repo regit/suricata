@@ -107,7 +107,7 @@ Then you need to add the ebpf flags to configure ::
  sudo ldconfig
  sudo mkdir /etc/suricata/ebpf/
 
-Clang compiler is needed if you want to build eBPF files as the build
+The ``clang`` compiler is needed if you want to build eBPF files as the build
 is done via a specific eBPF backend available only in llvm/clang suite.
 
 Setup bypass
