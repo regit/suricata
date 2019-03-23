@@ -795,23 +795,24 @@ int EBPFCheckBypassedFlowTimeout(struct flows_stats *bypassstats,
     BUG_ON(cfg == NULL);
 
     while(LiveDeviceForEach(&ldev, &ndev)) {
+        memset(&local_bypassstats, 0, sizeof(local_bypassstats));
         tcount = EBPFForEachFlowV4Table(ldev, "flow_table_v4",
-                                        &local_bypassstats, curtime,
-                                        cfg, EBPFUpdateFlowForKey);
+                               &local_bypassstats, curtime,
+                               cfg, EBPFUpdateFlowForKey);
+        bypassstats->count = local_bypassstats.count;
+        bypassstats->packets = local_bypassstats.packets ;
+        bypassstats->bytes = local_bypassstats.bytes;
         if (tcount) {
-            bypassstats->count = local_bypassstats.count;
-            bypassstats->packets = local_bypassstats.packets ;
-            bypassstats->bytes = local_bypassstats.bytes;
             ret = 1;
         }
         memset(&local_bypassstats, 0, sizeof(local_bypassstats));
         tcount = EBPFForEachFlowV6Table(ldev, "flow_table_v6",
                                         &local_bypassstats, curtime,
                                         cfg, EBPFUpdateFlowForKey);
+        bypassstats->count += local_bypassstats.count;
+        bypassstats->packets += local_bypassstats.packets ;
+        bypassstats->bytes += local_bypassstats.bytes;
         if (tcount) {
-            bypassstats->count += local_bypassstats.count;
-            bypassstats->packets += local_bypassstats.packets ;
-            bypassstats->bytes += local_bypassstats.bytes;
             ret = 1;
         }
     }
