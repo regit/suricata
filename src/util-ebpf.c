@@ -530,7 +530,7 @@ static int EBPFUpdateFlowForKey(struct flows_stats *flowstats, FlowKey *flow_key
         SCLogDebug("bypassed flow found %d -> %d, doing accounting",
                     f->sp, f->dp);
         if (flow_key->sp == f->sp) {
-            if (pkts_cnt != f->todstpktcnt) {
+            if (pkts_cnt != f->todstbypasspktcnt) {
                 flowstats->packets += pkts_cnt - f->todstbypasspktcnt;
                 flowstats->bytes += bytes_cnt - f->todstbypassbytecnt;
                 f->todstbypasspktcnt = pkts_cnt;
