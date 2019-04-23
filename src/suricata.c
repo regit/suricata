@@ -2701,6 +2701,7 @@ static int PostConfLoadedSetup(SCInstance *suri)
     StorageInit();
 #ifdef HAVE_PACKET_EBPF
     EBPFRegisterExtension();
+    LiveDevRegisterExtension();
 #endif
     AppLayerSetup();
 
