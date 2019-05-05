@@ -2286,25 +2286,41 @@ TmEcode AFPSetBPFFilter(AFPThreadVars *ptv)
 }
 
 #ifdef HAVE_PACKET_EBPF
-/**
- * Insert a half flow in the kernel bypass table
- *
- * \param mapfd file descriptor of the protocol bypass table
- * \param key data to use as key in the table
- * \param pkts_cnt packet count for the half flow
- * \param bytes_cnt bytes count for the half flow
- * \return 0 in case of error, 1 if success
- */
-static int AFPInsertHalfFlow(int mapd, void *key, uint32_t hash,
+static int AFPInsertHalfFlowNoPerCPU(int mapd, void *key, uint32_t hash,
+                             uint64_t pkts_cnt, uint64_t bytes_cnt)
+{
+    struct pair value;
+
+    value.packets = 0;
+    value.bytes = 0;
+    value.hash = hash;
+
+    if (bpf_map_update_elem(mapd, key, &value, BPF_NOEXIST) != 0) {
+        switch (errno) {
+            /* no more place in the hash */
+            case E2BIG:
+                return 0;
+            /* if we already have the key then bypass is a success */
+            case EEXIST:
+                return 1;
+            /* Not supposed to be there so issue a error */
+            default:
+                SCLogError(SC_ERR_BPF, "Can't update eBPF map: %s (%d)",
+                        strerror(errno),
+                        errno);
+                return 0;
+        }
+    }
+    return 1;
+}
+
+
+static int AFPInsertHalfFlowPerCPU(int mapd, void *key, uint32_t hash,
                              uint64_t pkts_cnt, uint64_t bytes_cnt,
                              unsigned int nr_cpus)
 {
     BPF_DECLARE_PERCPU(struct pair, value, nr_cpus);
     unsigned int i;
-
-    if (mapd == -1) {
-        return 0;
-    }
 
     /* We use a per CPU structure so we have to set an array of values as the kernel
      * is not duplicating the data on each CPU by itself. */
@@ -2330,6 +2346,31 @@ static int AFPInsertHalfFlow(int mapd, void *key, uint32_t hash,
         }
     }
     return 1;
+}
+
+/**
+ * Insert a half flow in the kernel bypass table
+ *
+ * \param mapfd file descriptor of the protocol bypass table
+ * \param key data to use as key in the table
+ * \param pkts_cnt packet count for the half flow
+ * \param bytes_cnt bytes count for the half flow
+ * \return 0 in case of error, 1 if success
+ */
+static int AFPInsertHalfFlow(int mapd, void *key, uint32_t hash,
+                             uint64_t pkts_cnt, uint64_t bytes_cnt,
+                             unsigned int nr_cpus)
+{
+    if (mapd == -1) {
+        return 0;
+    }
+
+    if (nr_cpus > 1) {
+        return AFPInsertHalfFlowPerCPU(mapd, key, hash, pkts_cnt, bytes_cnt,
+                                       nr_cpus);
+    } else {
+        return AFPInsertHalfFlowNoPerCPU(mapd, key, hash, pkts_cnt, bytes_cnt);
+    }
 }
 #endif
 
