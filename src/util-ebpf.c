@@ -508,6 +508,7 @@ static int EBPFCreateFlowForKey(struct flows_stats *flowstats, FlowKey *flow_key
      * then if we already have something in to server to client. We need
      * these numbers as we will use it to see if we have new traffic coming
      * on the flow */
+    /* FIXME this should be the bypass counter here */
     if (f->todstbytecnt == 0) {
         f->todstpktcnt = pkts_cnt;
         f->todstbytecnt = bytes_cnt;
