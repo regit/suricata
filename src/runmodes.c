@@ -152,6 +152,8 @@ static const char *RunModeTranslateModeToName(int runmode)
 #else
             return "WINDIVERT(DISABLED)";
 #endif
+        case RUNMODE_AFXDP:
+            return "AF_XDP_DEV";
         default:
             FatalError(SC_ERR_UNKNOWN_RUN_MODE, "Unknown runtime mode. Aborting");
     }
@@ -223,6 +225,7 @@ void RunModeRegisterRunModes(void)
     RunModeIdsNflogRegister();
     RunModeUnixSocketRegister();
     RunModeIpsWinDivertRegister();
+    RunModeIdsAfxdpRegister();
 #ifdef UNITTESTS
     UtRunModeRegister();
 #endif
@@ -333,6 +336,9 @@ void RunModeDispatch(int runmode, const char *custom_mode)
                 custom_mode = RunModeIpsWinDivertGetDefaultMode();
                 break;
 #endif
+            case RUNMODE_AFXDP:
+                custom_mode = RunModeIdsAfxdpGetDefaultMode();
+                break;
             default:
                 SCLogError(SC_ERR_UNKNOWN_RUN_MODE, "Unknown runtime mode. Aborting");
                 exit(EXIT_FAILURE);

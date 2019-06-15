@@ -94,6 +94,7 @@
 #include "source-napatech.h"
 
 #include "source-af-packet.h"
+#include "source-afxdp.h"
 #include "source-netmap.h"
 
 #include "source-windivert.h"
@@ -645,6 +646,10 @@ static void PrintUsage(const char *progname)
 #ifdef HAVE_AF_PACKET
     printf("\t--af-packet[=<dev>]                  : run in af-packet mode, no value select interfaces from suricata.yaml\n");
 #endif
+#ifdef HAVE_AFXDP
+    printf("\t--af-xdp                             : run in af-xdp mode, select interfaces from suricata.yaml\n");
+#endif
+
 #ifdef HAVE_NETMAP
     printf("\t--netmap[=<dev>]                     : run in netmap mode, no value select interfaces from suricata.yaml\n");
 #endif
@@ -895,6 +900,9 @@ void RegisterAllModules(void)
     /* af-packet */
     TmModuleReceiveAFPRegister();
     TmModuleDecodeAFPRegister();
+    /* af-xdp */
+    TmModuleReceiveAFXDPRegister();
+    TmModuleDecodeAFXDPRegister();
     /* netmap */
     TmModuleReceiveNetmapRegister();
     TmModuleDecodeNetmapRegister();
@@ -1008,6 +1016,14 @@ static TmEcode ParseInterfacesList(const int runmode, char *pcap_dev)
         int ret = LiveBuildDeviceListCustom("nflog", "group");
         if (ret == 0) {
             SCLogError(SC_ERR_INITIALIZATION, "No group found in config for nflog");
+            SCReturnInt(TM_ECODE_FAILED);
+        }
+#endif
+#ifdef HAVE_AFXDP
+    } else if (runmode == RUNMODE_AFXDP) {
+        int ret = LiveBuildDeviceList("af-xdp");
+        if (ret == 0) {
+            SCLogError(SC_ERR_INITIALIZATION, "No config found for AF_XDP");
             SCReturnInt(TM_ECODE_FAILED);
         }
 #endif
@@ -1455,6 +1471,7 @@ static TmEcode ParseCommandLine(int argc, char** argv, SCInstance *suri)
         {"pfring-cluster-id", required_argument, 0, 0},
         {"pfring-cluster-type", required_argument, 0, 0},
         {"af-packet", optional_argument, 0, 0},
+        {"af-xdp", optional_argument, 0, 0},
         {"netmap", optional_argument, 0, 0},
         {"pcap", optional_argument, 0, 0},
         {"pcap-file-continuous", 0, 0, 0},
@@ -1637,6 +1654,16 @@ static TmEcode ParseCommandLine(int argc, char** argv, SCInstance *suri)
                 }
 #else
                 SCLogError(SC_ERR_NFLOG_NOSUPPORT, "NFLOG not enabled.");
+                return TM_ECODE_FAILED;
+#endif /* HAVE_NFLOG */
+            } else if (strcmp((long_opts[option_index]).name, "af-xdp") == 0) {
+#ifdef HAVE_AFXDP
+                if (suri->run_mode == RUNMODE_UNKNOWN) {
+                    suri->run_mode = RUNMODE_AFXDP;
+                    LiveBuildDeviceList("af-xdp");
+                }
+#else
+                SCLogError(SC_ERR_AFXDP_NOSUPPORT, "AF_XDP not enabled.");
                 return TM_ECODE_FAILED;
 #endif /* HAVE_NFLOG */
             } else if (strcmp((long_opts[option_index]).name , "pcap") == 0) {

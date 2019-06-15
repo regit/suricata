@@ -1704,6 +1704,7 @@
 	        [ enable_ebpf="no"])
 
     have_xdp="no"
+    have_xsk="no"
     if test "$enable_ebpf" = "yes"; then
         AC_CHECK_LIB(elf,elf_begin,,LIBELF="no")
         if test "$LIBELF" = "no"; then
@@ -1730,6 +1731,10 @@
         AC_CHECK_LIB(bpf, bpf_set_link_xdp_fd,have_xdp="yes")
         if test "$have_xdp" = "yes"; then
             AC_DEFINE([HAVE_PACKET_XDP],[1],[XDP support is available])
+        fi
+        AC_CHECK_LIB(bpf, xsk_socket__create,have_xsk="yes")
+        if test "$have_xsk" = "yes"; then
+            AC_DEFINE([HAVE_AFXDP],[1],[AF_XDP support is available])
         fi
     fi;
 
@@ -2580,6 +2585,7 @@ SURICATA_BUILD_CONF="Suricata Configuration:
   AF_PACKET support:                       ${enable_af_packet}
   eBPF support:                            ${enable_ebpf}
   XDP support:                             ${have_xdp}
+  AF_XDP support:                          ${have_xsk}
   PF_RING support:                         ${enable_pfring}
   NFQueue support:                         ${enable_nfqueue}
   NFLOG support:                           ${enable_nflog}

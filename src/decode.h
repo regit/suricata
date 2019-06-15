@@ -68,6 +68,7 @@ enum PktSrcEnum {
 #ifdef HAVE_PF_RING_FLOW_OFFLOAD
 #include "source-pfring.h"
 #endif
+#include "source-afxdp.h"
 
 #include "action-globals.h"
 
