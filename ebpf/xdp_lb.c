@@ -167,7 +167,7 @@ static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_
         data = (void *)(long)ctx->data;
         data_end = (void *)(long)ctx->data_end;
 
-        if (proto == ETH_P_8021Q) {
+        if (proto == __constant_htons(ETH_P_8021Q)) {
             struct vlan_hdr *vhdr = (struct vlan_hdr *)(data);
             if ((void *)(vhdr + 1) > data_end)
                 return XDP_PASS;
@@ -175,9 +175,9 @@ static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_
             nh_off += sizeof(struct vlan_hdr);
         }
 
-        if (proto == ETH_P_IP) {
+        if (proto == __constant_htons(ETH_P_IP)) {
             return hash_ipv4(data, data_end);
-        } else if (proto == ETH_P_IPV6) {
+        } else if (proto == __constant_htons(ETH_P_IPV6)) {
             return hash_ipv6(data, data_end);
         } else
             return XDP_PASS;
@@ -205,6 +205,12 @@ int SEC("xdp") xdp_loadfilter(struct xdp_md *ctx)
 
     h_proto = eth->h_proto;
 
+#if 0
+    if (h_proto != __constant_htons(ETH_P_IP)) {
+        char fmt[] = "Current proto: %u\n";
+        bpf_trace_printk(fmt, sizeof(fmt), h_proto);
+    }
+#endif
     if (h_proto == __constant_htons(ETH_P_8021Q) || h_proto == __constant_htons(ETH_P_8021AD)) {
         struct vlan_hdr *vhdr;
 
