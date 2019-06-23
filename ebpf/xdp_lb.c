@@ -23,6 +23,7 @@
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <linux/if_vlan.h>
+#include <linux/if_tunnel.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/tcp.h>
@@ -66,17 +67,14 @@ struct bpf_map_def SEC("maps") cpus_count = {
     .max_entries	= 1,
 };
 
-static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_off, void *data_end)
+static int __always_inline hash_ipv4(void *data, void *data_end)
 {
-    struct iphdr *iph = data + nh_off;
+    struct iphdr *iph = data;
     __u32 key0 = 0;
     __u32 cpu_dest;
     __u32 *cpu_max = bpf_map_lookup_elem(&cpus_count, &key0);
     __u32 *cpu_selected;
     __u32 cpu_hash;
-
-    if ((void *)(iph + 1) > data_end)
-        return XDP_PASS;
 
     /* IP-pairs hit same CPU */
     cpu_hash = iph->saddr + iph->daddr;
@@ -94,17 +92,14 @@ static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_
     }
 }
 
-static int __always_inline filter_ipv6(struct xdp_md *ctx, void *data, __u64 nh_off, void *data_end)
+static int __always_inline hash_ipv6(void *data, void *data_end)
 {
-    struct ipv6hdr *ip6h = data + nh_off;
+    struct ipv6hdr *ip6h = data;
     __u32 key0 = 0;
     __u32 cpu_dest;
     int *cpu_max = bpf_map_lookup_elem(&cpus_count, &key0);
     __u32 *cpu_selected;
     __u32 cpu_hash;
-
-    if ((void *)(ip6h + 1) > data_end)
-        return XDP_PASS;
 
     /* IP-pairs hit same CPU */
     cpu_hash  = ip6h->saddr.s6_addr32[0] + ip6h->daddr.s6_addr32[0];
@@ -125,6 +120,59 @@ static int __always_inline filter_ipv6(struct xdp_md *ctx, void *data, __u64 nh_
     }
 
     return XDP_PASS;
+}
+
+static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_off, void *data_end)
+{
+    struct iphdr *iph = data + nh_off;
+    if ((void *)(iph + 1) > data_end)
+        return XDP_PASS;
+
+    if (iph->protocol == IPPROTO_GRE) {
+        __be16 proto;
+        struct gre_hdr {
+            __be16 flags;
+            __be16 proto;
+        };
+
+        nh_off += sizeof(struct iphdr);
+        struct gre_hdr *grhdr = (struct gre_hdr *)(iph + 1);
+
+        if (grhdr->flags & (GRE_VERSION|GRE_ROUTING))
+            return XDP_PASS;
+
+        proto = grhdr->proto;
+        nh_off += 4;
+        if (grhdr->flags & GRE_CSUM)
+            nh_off += 4;
+        if (grhdr->flags & GRE_KEY)
+            nh_off += 4;
+        if (grhdr->flags & GRE_SEQ)
+            nh_off += 4;
+
+        if (proto == ETH_P_8021Q) {
+            struct vlan_hdr *vhdr = (struct vlan_hdr *)(data + nh_off);
+            proto = vhdr->h_vlan_encapsulated_proto;
+            nh_off += sizeof(struct vlan_hdr);
+        }
+
+        if (proto == ETH_P_IP) {
+            return hash_ipv4(data + nh_off, data);
+        } else if (proto == ETH_P_IPV6) {
+            return hash_ipv6(data + nh_off, data_end);
+        } else
+            return XDP_PASS;
+    }
+    return XDP_PASS;
+}
+
+static int __always_inline filter_ipv6(struct xdp_md *ctx, void *data, __u64 nh_off, void *data_end)
+{
+    struct ipv6hdr *ip6h = data + nh_off;
+    if ((void *)(ip6h + 1) > data_end)
+        return XDP_PASS;
+
+    return hash_ipv6((void *)ip6h, data_end);
 }
 
 int SEC("xdp") xdp_loadfilter(struct xdp_md *ctx)
