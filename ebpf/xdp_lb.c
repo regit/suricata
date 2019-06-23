@@ -70,6 +70,9 @@ struct bpf_map_def SEC("maps") cpus_count = {
 static int __always_inline hash_ipv4(void *data, void *data_end)
 {
     struct iphdr *iph = data;
+    if ((void *)(iph + 1) > data_end)
+        return XDP_PASS;
+
     __u32 key0 = 0;
     __u32 cpu_dest;
     __u32 *cpu_max = bpf_map_lookup_elem(&cpus_count, &key0);
@@ -95,6 +98,9 @@ static int __always_inline hash_ipv4(void *data, void *data_end)
 static int __always_inline hash_ipv6(void *data, void *data_end)
 {
     struct ipv6hdr *ip6h = data;
+    if ((void *)(ip6h + 1) > data_end)
+        return XDP_PASS;
+
     __u32 key0 = 0;
     __u32 cpu_dest;
     int *cpu_max = bpf_map_lookup_elem(&cpus_count, &key0);
@@ -138,6 +144,9 @@ static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_
         nh_off += sizeof(struct iphdr);
         struct gre_hdr *grhdr = (struct gre_hdr *)(iph + 1);
 
+        if ((void *)(grhdr + 1) > data_end)
+            return XDP_PASS;
+
         if (grhdr->flags & (GRE_VERSION|GRE_ROUTING))
             return XDP_PASS;
 
@@ -150,6 +159,8 @@ static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_
         if (grhdr->flags & GRE_SEQ)
             nh_off += 4;
 
+        if (data + nh_off > data_end)
+            return XDP_PASS;
         if (bpf_xdp_adjust_head(ctx, 0 + nh_off))
             return XDP_PASS;
 
@@ -158,6 +169,8 @@ static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_
 
         if (proto == ETH_P_8021Q) {
             struct vlan_hdr *vhdr = (struct vlan_hdr *)(data);
+            if ((void *)(vhdr + 1) > data_end)
+                return XDP_PASS;
             proto = vhdr->h_vlan_encapsulated_proto;
             nh_off += sizeof(struct vlan_hdr);
         }
@@ -169,15 +182,12 @@ static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_
         } else
             return XDP_PASS;
     }
-    return XDP_PASS;
+    return hash_ipv4(data + nh_off, data_end);
 }
 
 static int __always_inline filter_ipv6(struct xdp_md *ctx, void *data, __u64 nh_off, void *data_end)
 {
     struct ipv6hdr *ip6h = data + nh_off;
-    if ((void *)(ip6h + 1) > data_end)
-        return XDP_PASS;
-
     return hash_ipv6((void *)ip6h, data_end);
 }
 
