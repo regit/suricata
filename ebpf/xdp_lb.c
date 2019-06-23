@@ -141,8 +141,8 @@ static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_
         if (grhdr->flags & (GRE_VERSION|GRE_ROUTING))
             return XDP_PASS;
 
-        proto = grhdr->proto;
         nh_off += 4;
+        proto = grhdr->proto;
         if (grhdr->flags & GRE_CSUM)
             nh_off += 4;
         if (grhdr->flags & GRE_KEY)
@@ -150,16 +150,22 @@ static int __always_inline filter_ipv4(struct xdp_md *ctx, void *data, __u64 nh_
         if (grhdr->flags & GRE_SEQ)
             nh_off += 4;
 
+        if (bpf_xdp_adjust_head(ctx, 0 + nh_off))
+            return XDP_PASS;
+
+        data = (void *)(long)ctx->data;
+        data_end = (void *)(long)ctx->data_end;
+
         if (proto == ETH_P_8021Q) {
-            struct vlan_hdr *vhdr = (struct vlan_hdr *)(data + nh_off);
+            struct vlan_hdr *vhdr = (struct vlan_hdr *)(data);
             proto = vhdr->h_vlan_encapsulated_proto;
             nh_off += sizeof(struct vlan_hdr);
         }
 
         if (proto == ETH_P_IP) {
-            return hash_ipv4(data + nh_off, data);
+            return hash_ipv4(data, data_end);
         } else if (proto == ETH_P_IPV6) {
-            return hash_ipv6(data + nh_off, data_end);
+            return hash_ipv6(data, data_end);
         } else
             return XDP_PASS;
     }
