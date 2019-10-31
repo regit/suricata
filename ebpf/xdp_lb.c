@@ -23,7 +23,6 @@
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <linux/if_vlan.h>
-#include <linux/if_tunnel.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/tcp.h>
@@ -31,6 +30,12 @@
 #include "bpf_helpers.h"
 
 #include "hash_func01.h"
+
+#define GRE_CSUM        __cpu_to_be16(0x8000)
+#define GRE_ROUTING     __cpu_to_be16(0x4000)
+#define GRE_KEY         __cpu_to_be16(0x2000)
+#define GRE_SEQ         __cpu_to_be16(0x1000)
+#define GRE_VERSION     __cpu_to_be16(0x0007)
 
 #define LINUX_VERSION_CODE 263682
 
