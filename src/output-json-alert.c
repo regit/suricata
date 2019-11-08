@@ -85,6 +85,7 @@
 #define LOG_JSON_WEBSOCKET_PAYLOAD_BASE64 BIT_U16(12)
 #define LOG_JSON_PAYLOAD_LENGTH           BIT_U16(13)
 #define LOG_JSON_REFERENCE                BIT_U16(14)
+#define LOG_JSON_HTTP_HEADERS             BIT_U16(15)
 
 #define METADATA_DEFAULTS ( LOG_JSON_FLOW |                        \
             LOG_JSON_APP_LAYER  |                                  \
@@ -355,6 +356,9 @@ static void AlertAddAppLayer(const Packet *p, JsonBuilder *jb,
                 }
                 if (option_flags & LOG_JSON_HTTP_BODY_BASE64) {
                     EveHttpLogJSONBodyBase64(jb, p->flow, tx_id);
+                }
+                if (option_flags & LOG_JSON_HTTP_HEADERS) {
+                    EveHttpLogAllJSONHeaders(jb, p->flow, tx_id);
                 }
             }
             jb_close(jb);
@@ -968,6 +972,7 @@ static void JsonAlertLogSetupMetadata(AlertJsonOutputCtx *json_output_ctx,
         SetFlag(conf, "websocket-payload", LOG_JSON_WEBSOCKET_PAYLOAD_BASE64, &flags);
         SetFlag(conf, "verdict", LOG_JSON_VERDICT, &flags);
         SetFlag(conf, "payload-length", LOG_JSON_PAYLOAD_LENGTH, &flags);
+        SetFlag(conf, "http-headers", LOG_JSON_HTTP_HEADERS, &flags);
 
         /* Check for obsolete flags and warn that they have no effect. */
         static const char *deprecated_flags[] = { "http", "tls", "ssh", "smtp", "dnp3", "app-layer",

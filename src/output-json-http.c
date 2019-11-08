@@ -379,9 +379,9 @@ static void EveHttpLogJSONHeaders(
                         }
                     }
                 }
-            }
-            if (!tolog) {
-                continue;
+                if (!tolog) {
+                    continue;
+                }
             }
         }
         array_empty = false;
@@ -476,7 +476,7 @@ void EveHttpLogJSONBodyBase64(JsonBuilder *js, Flow *f, uint64_t tx_id)
 }
 
 /* JSON format logging */
-static void EveHttpLogJSON(JsonHttpLogThread *aft, JsonBuilder *js, htp_tx_t *tx, uint64_t tx_id)
+static void EveHttpLogJSON(JsonHttpLogThread *aft, JsonBuilder *js, Flow * f, htp_tx_t *tx, uint64_t tx_id)
 {
     LogHttpFileCtx *http_ctx = aft->httplog_ctx;
     jb_open_object(js, "http");
@@ -511,7 +511,7 @@ static int JsonHttpLogger(ThreadVars *tv, void *thread_data, const Packet *p, Fl
 
     SCLogDebug("got a HTTP request and now logging !!");
 
-    EveHttpLogJSON(jhl, js, tx, tx_id);
+    EveHttpLogJSON(jhl, js, f, tx, tx_id);
     HttpXFFCfg *xff_cfg = jhl->httplog_ctx->xff_cfg != NULL ?
         jhl->httplog_ctx->xff_cfg : jhl->httplog_ctx->parent_xff_cfg;
 
@@ -556,6 +556,19 @@ bool EveHttpAddMetadata(const Flow *f, uint64_t tx_id, JsonBuilder *js)
     }
 
     return false;
+}
+
+void EveHttpLogAllJSONHeaders(JsonBuilder *js, Flow *f, uint64_t tx_id)
+{
+
+    HtpState *htp_state = (HtpState *)FlowGetAppState(f);
+    if (htp_state) {
+        htp_tx_t *tx = AppLayerParserGetTx(IPPROTO_TCP, ALPROTO_HTTP1, htp_state, tx_id);
+        if (tx) {
+            EveHttpLogJSONHeaders(js, LOG_HTTP_REQ_HEADERS, tx, NULL);
+            EveHttpLogJSONHeaders(js, LOG_HTTP_RES_HEADERS, tx, NULL);
+        }
+    }
 }
 
 static void OutputHttpLogDeinitSub(OutputCtx *output_ctx)

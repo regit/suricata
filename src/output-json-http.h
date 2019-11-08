@@ -29,5 +29,6 @@ void JsonHttpLogRegister(void);
 bool EveHttpAddMetadata(const Flow *f, uint64_t tx_id, JsonBuilder *js);
 void EveHttpLogJSONBodyPrintable(JsonBuilder *js, Flow *f, uint64_t tx_id);
 void EveHttpLogJSONBodyBase64(JsonBuilder *js, Flow *f, uint64_t tx_id);
+void EveHttpLogAllJSONHeaders(JsonBuilder *js, Flow *f, uint64_t tx_id);
 
 #endif /* SURICATA_OUTPUT_JSON_HTTP_H */
