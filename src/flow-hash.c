@@ -856,11 +856,11 @@ Flow *FlowGetFromFlowKey(FlowKey *key, struct timespec *ttime, const uint32_t ha
     if (f != NULL) {
         return f;
     }
-    /* TODO use spare pool */
+
     /* now see if we can alloc a new flow */
     f = FlowAlloc();
     if (f == NULL) {
-        SCLogDebug("Can't get a spare flow at start");
+        SCLogDebug("Can't get a flow at start");
         return NULL;
     }
     f->proto = key->proto;
