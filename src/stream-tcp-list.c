@@ -591,7 +591,7 @@ static void StreamTcpSegmentAddPacketData(
                 goto hdr_clean;
             } else {
                 seg->pcap_hdr_storage->pkt_hdr = tmp_pkt_hdr;
-                seg->pcap_hdr_storage->alloclen = GET_PKT_LEN(p) - p->payload_len;
+                seg->pcap_hdr_storage->alloclen = GET_PKT_LEN(rp) - p->payload_len;
             }
         }
         memcpy(seg->pcap_hdr_storage->pkt_hdr, GET_PKT_DATA(rp),
