@@ -607,9 +607,11 @@ static int PcapLog (ThreadVars *t, void *thread_data, const Packet *p)
     pl->h->ts.tv_usec = p->ts.tv_usec;
     if (IS_TUNNEL_PKT(p)) {
         rp = p->root;
+        SCMutexLock(&rp->tunnel_mutex);
         pl->h->caplen = GET_PKT_LEN(rp);
         pl->h->len = GET_PKT_LEN(rp);
         len = sizeof(*pl->h) + GET_PKT_LEN(rp);
+        SCMutexUnlock(&rp->tunnel_mutex);
     } else {
         pl->h->caplen = GET_PKT_LEN(p);
         pl->h->len = GET_PKT_LEN(p);
@@ -689,9 +691,11 @@ static int PcapLog (ThreadVars *t, void *thread_data, const Packet *p)
             pl->h->ts.tv_usec = p->ts.tv_usec;
             if (IS_TUNNEL_PKT(p)) {
                 rp = p->root;
+                SCMutexLock(&rp->tunnel_mutex);
                 pl->h->caplen = GET_PKT_LEN(rp);
                 pl->h->len = GET_PKT_LEN(rp);
                 len = sizeof(*pl->h) + GET_PKT_LEN(rp);
+                SCMutexUnlock(&rp->tunnel_mutex);
             } else {
                 pl->h->caplen = GET_PKT_LEN(p);
                 pl->h->len = GET_PKT_LEN(p);
@@ -701,11 +705,13 @@ static int PcapLog (ThreadVars *t, void *thread_data, const Packet *p)
     }
 
     if (IS_TUNNEL_PKT(p)) {
+        SCMutexLock(&rp->tunnel_mutex);
 #ifdef HAVE_LIBLZ4
         ret = PcapWrite(pl, comp, GET_PKT_DATA(rp), len);
 #else
         ret = PcapWrite(pl, NULL, GET_PKT_DATA(rp), len);
 #endif
+        SCMutexUnlock(&rp->tunnel_mutex);
     } else {
 #ifdef HAVE_LIBLZ4
         ret = PcapWrite(pl, comp, GET_PKT_DATA(p), len);
