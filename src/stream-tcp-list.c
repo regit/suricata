@@ -573,6 +573,7 @@ static void StreamTcpSegmentAddPacketData(
         rp = p->root;
     }
 
+    SCMutexLock(&rp->tunnel_mutex);
     if (GET_PKT_DATA(rp) != NULL && GET_PKT_LEN(rp) > p->payload_len) {
         seg->pcap_hdr_storage->ts.tv_sec = rp->ts.tv_sec;
         seg->pcap_hdr_storage->ts.tv_usec = rp->ts.tv_usec;
@@ -601,6 +602,7 @@ static void StreamTcpSegmentAddPacketData(
         seg->pcap_hdr_storage->ts.tv_usec = 0;
         seg->pcap_hdr_storage->pktlen = 0;
     }
+    SCMutexUnlock(&rp->tunnel_mutex);
 }
 
 /**
