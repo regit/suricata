@@ -263,10 +263,6 @@ static void *TcpSegmentPoolAlloc(void)
     if (unlikely(seg == NULL))
         return NULL;
 
-    /* do this before the can bail, so TcpSegmentPoolCleanup
-     * won't have uninitialized memory to consider. */
-    memset(seg, 0, sizeof (TcpSegment));
-
     if (IsTcpSessionDumpingEnabled()) {
         uint32_t memuse =
                 sizeof(TcpSegmentPcapHdrStorage) + sizeof(char) * TCPSEG_PKT_HDR_DEFAULT_SIZE;
@@ -289,6 +285,8 @@ static void *TcpSegmentPoolAlloc(void)
                                              "TcpSegmentPcapHdrStorage");
             }
         }
+    } else {
+        seg->pcap_hdr_storage = NULL;
     }
 
     return seg;
@@ -296,9 +294,19 @@ static void *TcpSegmentPoolAlloc(void)
 
 static int TcpSegmentPoolInit(void *data, void *initdata)
 {
+    TcpSegment *seg = (TcpSegment *)data;
+    TcpSegmentPcapHdrStorage *pcap_hdr;
+
+    pcap_hdr = seg->pcap_hdr_storage;
+
+    /* do this before the can bail, so TcpSegmentPoolCleanup
+     * won't have uninitialized memory to consider. */
+    memset(seg, 0, sizeof (TcpSegment));
+
     if (IsTcpSessionDumpingEnabled()) {
         uint32_t memuse =
                 sizeof(TcpSegmentPcapHdrStorage) + sizeof(char) * TCPSEG_PKT_HDR_DEFAULT_SIZE;
+        seg->pcap_hdr_storage = pcap_hdr;
         if (StreamTcpReassembleCheckMemcap(sizeof(TcpSegment) + memuse) == 0) {
             return 0;
         }
