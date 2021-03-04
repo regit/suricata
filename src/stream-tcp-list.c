@@ -566,10 +566,7 @@ static void StreamTcpSegmentAddPacketData(
         return;
     }
 
-    if (IS_TUNNEL_PKT(p)) {
-        if (p->root == NULL) {
-            return;
-        }
+    if (IS_TUNNEL_PKT(p) && !IS_TUNNEL_ROOT_PKT(p)) {
         rp = p->root;
     }
 
