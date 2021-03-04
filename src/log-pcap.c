@@ -414,7 +414,7 @@ static int PcapLogOpenHandles(PcapLogData *pl, const Packet *p)
     PCAPLOG_PROFILE_START;
     const Packet *real_p;
 
-    if (IS_TUNNEL_PKT(p)) {
+    if (IS_TUNNEL_PKT(p) && !IS_TUNNEL_ROOT_PKT(p)) {
         real_p = p->root;
     } else {
         real_p = p;
@@ -605,7 +605,7 @@ static int PcapLog (ThreadVars *t, void *thread_data, const Packet *p)
     pl->pkt_cnt++;
     pl->h->ts.tv_sec = p->ts.tv_sec;
     pl->h->ts.tv_usec = p->ts.tv_usec;
-    if (IS_TUNNEL_PKT(p)) {
+    if (IS_TUNNEL_PKT(p) && !IS_TUNNEL_ROOT_PKT(p)) {
         rp = p->root;
         SCMutexLock(&rp->tunnel_mutex);
         pl->h->caplen = GET_PKT_LEN(rp);
@@ -689,7 +689,7 @@ static int PcapLog (ThreadVars *t, void *thread_data, const Packet *p)
             /* PcapLogDumpSegment has writtens over the PcapLogData variables so need to update */
             pl->h->ts.tv_sec = p->ts.tv_sec;
             pl->h->ts.tv_usec = p->ts.tv_usec;
-            if (IS_TUNNEL_PKT(p)) {
+            if (IS_TUNNEL_PKT(p) && !IS_TUNNEL_ROOT_PKT(p)) {
                 rp = p->root;
                 SCMutexLock(&rp->tunnel_mutex);
                 pl->h->caplen = GET_PKT_LEN(rp);
@@ -704,7 +704,7 @@ static int PcapLog (ThreadVars *t, void *thread_data, const Packet *p)
         }
     }
 
-    if (IS_TUNNEL_PKT(p)) {
+    if (IS_TUNNEL_PKT(p) && !IS_TUNNEL_ROOT_PKT(p)) {
         SCMutexLock(&rp->tunnel_mutex);
 #ifdef HAVE_LIBLZ4
         ret = PcapWrite(pl, comp, GET_PKT_DATA(rp), len);
