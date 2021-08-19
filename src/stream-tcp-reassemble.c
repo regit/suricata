@@ -137,7 +137,7 @@ uint64_t StreamTcpReassembleMemuseGlobalCounter(void)
 
 /**
  * \brief  Function to Check the reassembly memory usage counter against the
- *         allowed max memory usgae for TCP segments.
+ *         allowed max memory usage for TCP segments.
  *
  * \param  size Size of the TCP segment and its payload length memory allocated
  * \retval 1 if in bounds
