@@ -704,8 +704,13 @@ static inline void MoveToWorkQueue(ThreadVars *tv, FlowLookupStruct *fls,
     }
 }
 
-static inline bool FlowIsTimedOut(const Flow *f, const uint32_t sec, const bool emerg)
+static inline bool FlowIsTimedOut(const Packet *p, const Flow *f, const uint32_t sec, const bool emerg)
 {
+    /* If a packet comes on a TCP session that is not closed and early timeout then
+     * it is probably a packet from the a flow that is alive so let's not declare it
+     * as timeouted */
+    if (p->proto == IPPROTO_TCP)
+        return false;
     if (unlikely(f->timeout_at < sec)) {
         return true;
     } else if (unlikely(emerg)) {
@@ -791,8 +796,10 @@ Flow *FlowGetFlowFromHash(ThreadVars *tv, FlowLookupStruct *fls,
     f = fb->head;
     do {
         Flow *next_f = NULL;
+        /* FIXME do we really need to do this ? For instance on TCP, if we see packets on the session, it is highly
+         * likely that a silent TCP session is starting to talk again. */
         const bool timedout =
-            (fb_nextts < (uint32_t)p->ts.tv_sec && FlowIsTimedOut(f, (uint32_t)p->ts.tv_sec, emerg));
+            (fb_nextts < (uint32_t)p->ts.tv_sec && FlowIsTimedOut(p, f, (uint32_t)p->ts.tv_sec, emerg));
         if (timedout) {
             FromHashLockTO(f);//FLOWLOCK_WRLOCK(f);
             if (f->use_cnt == 0) {
@@ -801,6 +808,8 @@ Flow *FlowGetFlowFromHash(ThreadVars *tv, FlowLookupStruct *fls,
                 /* flow stays locked, ownership xfer'd to MoveToWorkQueue */
                 goto flow_removed;
             }
+            /* FIXME what do we do here: the flow is used so we don't take it and we get rid of it
+             * We have next_f set to null so we are going to allocate */
             FLOWLOCK_UNLOCK(f);
         } else if (FlowCompare(f, p) != 0) {
             FromHashLockCMP(f);//FLOWLOCK_WRLOCK(f);
