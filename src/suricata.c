@@ -158,6 +158,8 @@
 #include "util-error.h"
 #include "util-daemon.h"
 #include "util-byte.h"
+#include "util-landlock.h"
+
 #include "reputation.h"
 
 #include "output.h"
@@ -2898,6 +2900,8 @@ int SuricataMain(int argc, char **argv)
     if (PostConfLoadedSetup(&suricata) != TM_ECODE_OK) {
         exit(EXIT_FAILURE);
     }
+
+    LandlockSandboxing(&suricata);
 
     SCDropMainThreadCaps(suricata.userid, suricata.groupid);
 
