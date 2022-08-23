@@ -67,6 +67,8 @@ asn1-rs = { version = "~0.5.2" }
 # month olds, so it needs to be pinned even at the patch level.
 time = "=0.3.13"
 
+psl = "~2"
+
 suricata-derive = { path = "./derive" }
 
 [dev-dependencies]

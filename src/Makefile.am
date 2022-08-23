@@ -339,6 +339,7 @@ noinst_HEADERS = \
 	detect-tls-random.h \
 	detect-tos.h \
 	detect-transform-compress-whitespace.h \
+	detect-transform-domain.h \
 	detect-transform-dotprefix.h \
 	detect-transform-md5.h \
 	detect-transform-pcrexform.h \
@@ -949,6 +950,7 @@ libsuricata_c_a_SOURCES = \
 	detect-tls-random.c \
 	detect-tos.c \
 	detect-transform-compress-whitespace.c \
+	detect-transform-domain.c \
 	detect-transform-dotprefix.c \
 	detect-transform-md5.c \
 	detect-transform-pcrexform.c \
