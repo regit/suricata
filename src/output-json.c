@@ -873,6 +873,14 @@ JsonBuilder *CreateEveHeader(const Packet *p, enum OutputJsonLogDirection dir,
         EveAddCommonOptions(&eve_ctx->cfg, p, f, js);
     }
 
+    if (f != NULL) {
+        if (p->flowflags & FLOW_PKT_TOSERVER) {
+            jb_set_string(js, "direction", "to_server");
+        } else {
+            jb_set_string(js, "direction", "to_client");
+        }
+    }
+
     return js;
 }
 
