@@ -204,14 +204,20 @@ void LandlockSandboxing(SCInstance *suri)
             char *file_name = SCStrdup(pcap_file);
             if (file_name != NULL) {
                 struct stat statbuf;
-                if (stat(file_name, &statbuf) != -1) {
-                    if (S_ISDIR(statbuf.st_mode)) {
-                        LandlockSandboxingReadPath(ruleset, file_name);
-                    } else {
-                        LandlockSandboxingReadPath(ruleset, dirname(file_name));
-                    }
-                } else {
+                int fd = open(file_name, 'r');
+                if (fd == -1) {
                     SCLogError("Can't open pcap file");
+                } else {
+                    if (fstat(fd, &statbuf) != -1) {
+                        if (S_ISDIR(statbuf.st_mode)) {
+                            LandlockSandboxingReadPath(ruleset, file_name);
+                        } else {
+                            LandlockSandboxingReadPath(ruleset, dirname(file_name));
+                        }
+                    } else {
+                        SCLogError("Can't open pcap file");
+                    }
+                    close(fd);
                 }
                 SCFree(file_name);
             }
