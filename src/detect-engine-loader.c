@@ -53,6 +53,12 @@ extern int engine_analysis;
 static int fp_engine_analysis_set = 0;
 int rule_engine_analysis_set = 0;
 
+#if defined OS_WIN32 || defined __CYGWIN__
+#define PATH_EXTRA_LENGTH 3
+#else
+#define PATH_EXTRA_LENGTH 2
+#endif
+
 /**
  *  \brief Create the path if default-rule-path was specified
  *  \param sig_file The name of the file
@@ -87,7 +93,7 @@ char *DetectLoadCompleteSigPath(const DetectEngineCtx *de_ctx, const char *sig_f
         if (defaultpath) {
             SCLogDebug("Default path: %s", defaultpath);
             size_t path_len = sizeof(char) * (strlen(defaultpath) +
-                          strlen(sig_file) + 2);
+                          strlen(sig_file) + PATH_EXTRA_LENGTH);
             path = SCMalloc(path_len);
             if (unlikely(path == NULL))
                 return NULL;
