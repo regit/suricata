@@ -56,6 +56,7 @@ static int DetectIPRepMatch (DetectEngineThreadCtx *, Packet *,
         const Signature *, const SigMatchCtx *);
 static int DetectIPRepSetup (DetectEngineCtx *, Signature *, const char *);
 void DetectIPRepFree (DetectEngineCtx *, void *);
+static void DetectIPRepDump(JsonBuilder *, const void *);
 #ifdef UNITTESTS
 static void IPRepRegisterTests(void);
 #endif
@@ -68,6 +69,7 @@ void DetectIPRepRegister (void)
     sigmatch_table[DETECT_IPREP].Match = DetectIPRepMatch;
     sigmatch_table[DETECT_IPREP].Setup = DetectIPRepSetup;
     sigmatch_table[DETECT_IPREP].Free  = DetectIPRepFree;
+    sigmatch_table[DETECT_IPREP].JsonDump = DetectIPRepDump;
 #ifdef UNITTESTS
     sigmatch_table[DETECT_IPREP].RegisterTests = IPRepRegisterTests;
 #endif
@@ -246,6 +248,55 @@ void DetectIPRepFree (DetectEngineCtx *de_ctx, void *ptr)
         return;
 
     rs_detect_iprep_free(fd);
+}
+
+static void DetectIPRepDump(JsonBuilder *js, const void *gcd)
+{
+    DetectIPRepData *cd = (DetectIPRepData *)gcd;
+    jb_open_object(js, "iprep");
+    jb_set_int(js, "category", cd->cat);
+    switch (cd->cmd) {
+        case IPRepCmdAny:
+            jb_set_string(js, "command", "any");
+            break;
+        case IPRepCmdBoth:
+            jb_set_string(js, "command", "both");
+            break;
+        case IPRepCmdSrc:
+            jb_set_string(js, "command", "src");
+            break;
+        case IPRepCmdDst:
+            jb_set_string(js, "command", "dst");
+            break;
+    }
+    switch (cd->du8.mode) {
+        case DetectUintModeEqual:
+            jb_set_string(js, "operator", "equal");
+            break;
+        case DetectUintModeLt:
+            jb_set_string(js, "operator", "lt");
+            break;
+        case DetectUintModeLte:
+            jb_set_string(js, "operator", "lte");
+            break;
+        case DetectUintModeGt:
+            jb_set_string(js, "operator", "gt");
+            break;
+        case DetectUintModeGte:
+            jb_set_string(js, "operator", "gte");
+            break;
+        case DetectUintModeRange:
+            jb_set_string(js, "operator", "range");
+            break;
+        case DetectUintModeNe:
+            jb_set_string(js, "operator", "not_equal");
+            break;
+    }
+    jb_set_uint(js, "arg1", cd->du8.arg1);
+    if (cd->du8.mode == DetectUintModeRange) {
+        jb_set_uint(js, "arg2", cd->du8.arg2);
+    }
+    jb_close(js);
 }
 
 #ifdef UNITTESTS
