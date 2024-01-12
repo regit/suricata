@@ -58,6 +58,7 @@ int DetectIsdataatSetup (DetectEngineCtx *, Signature *, const char *);
 static void DetectIsdataatRegisterTests(void);
 #endif
 void DetectIsdataatFree(DetectEngineCtx *, void *);
+static void DetectIsdataatDump(JsonBuilder *, const void *);
 
 static int DetectEndsWithSetup (DetectEngineCtx *de_ctx, Signature *s, const char *nullstr);
 
@@ -73,6 +74,7 @@ void DetectIsdataatRegister(void)
     sigmatch_table[DETECT_ISDATAAT].Match = NULL;
     sigmatch_table[DETECT_ISDATAAT].Setup = DetectIsdataatSetup;
     sigmatch_table[DETECT_ISDATAAT].Free  = DetectIsdataatFree;
+    sigmatch_table[DETECT_ISDATAAT].JsonDump = DetectIsdataatDump;
 #ifdef UNITTESTS
     sigmatch_table[DETECT_ISDATAAT].RegisterTests = DetectIsdataatRegisterTests;
 #endif
@@ -336,6 +338,31 @@ static int DetectEndsWithSetup (DetectEngineCtx *de_ctx, Signature *s, const cha
     ret = 0;
  end:
     return ret;
+}
+
+static void DumpIsdataat(JsonBuilder *js, DetectIsdataatData *cd)
+{
+    jb_set_uint(js, "offset", cd->dataat);
+    if (cd->flags & ISDATAAT_RELATIVE) {
+        jb_set_bool(js, "relative", true);
+    }
+    if (cd->flags & ISDATAAT_RAWBYTES) {
+        jb_set_bool(js, "rawbytes", true);
+    }
+    if (cd->flags & ISDATAAT_NEGATED) {
+        jb_set_bool(js, "negated", true);
+    }
+    if (cd->flags & ISDATAAT_OFFSET_VAR) {
+        jb_set_bool(js, "offset_var", true);
+    }
+}
+
+static void DetectIsdataatDump(JsonBuilder *js, const void *gcd)
+{
+    DetectIsdataatData *cd = (DetectIsdataatData *)gcd;
+    jb_open_object(js, "isdataat");
+    DumpIsdataat(js, cd);
+    jb_close(js);
 }
 
 #ifdef UNITTESTS
