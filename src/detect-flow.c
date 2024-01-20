@@ -448,15 +448,50 @@ static void DetectFlowDump(JsonBuilder *js, const void *gcd)
 {
     DetectFlowData *cd = (DetectFlowData *)gcd;
     jb_open_object(js, "flow");
+    if (cd->flags & DETECT_FLOW_FLAG_TOSERVER) {
+        jb_set_bool(js, "to_server", true);
+    } else {
+        jb_set_bool(js, "to_server", false);
+    }
+    if (cd->flags & DETECT_FLOW_FLAG_TOCLIENT) {
+        jb_set_bool(js, "to_client", true);
+    } else {
+        jb_set_bool(js, "to_client", false);
+    }
     if (cd->flags & DETECT_FLOW_FLAG_ESTABLISHED) {
         jb_set_bool(js, "established", true);
     } else {
         jb_set_bool(js, "established", false);
     }
-    if (cd->flags & DETECT_FLOW_FLAG_TOSERVER) {
-        jb_set_bool(js, "to_server", true);
+    if (cd->flags & DETECT_FLOW_FLAG_NOT_ESTABLISHED) {
+        jb_set_bool(js, "not_established", true);
     } else {
-        jb_set_bool(js, "to_server", false);
+        jb_set_bool(js, "not_established", false);
+    }
+    if (cd->flags & DETECT_FLOW_FLAG_STATELESS) {
+        jb_set_bool(js, "stateless", true);
+    } else {
+        jb_set_bool(js, "stateless", false);
+    }
+    if (cd->flags & DETECT_FLOW_FLAG_ONLYSTREAM) {
+        jb_set_bool(js, "only_stream", true);
+    } else {
+        jb_set_bool(js, "only_stream", false);
+    }
+    if (cd->flags & DETECT_FLOW_FLAG_NOSTREAM) {
+        jb_set_bool(js, "no_stream", true);
+    } else {
+        jb_set_bool(js, "no_stream", false);
+    }
+    if (cd->flags & DETECT_FLOW_FLAG_NO_FRAG) {
+        jb_set_bool(js, "no_frag", true);
+    } else {
+        jb_set_bool(js, "no_frag", false);
+    }
+    if (cd->flags & DETECT_FLOW_FLAG_ONLY_FRAG) {
+        jb_set_bool(js, "only_frag", true);
+    } else {
+        jb_set_bool(js, "only_frag", false);
     }
     jb_close(js);
 }
