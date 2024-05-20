@@ -76,6 +76,7 @@ typedef struct JsonHttpLogThread_ {
 #define LOG_HTTP_ARRAY 4 /* require array handling */
 #define LOG_HTTP_REQ_HEADERS 8
 #define LOG_HTTP_RES_HEADERS 16
+#define LOG_HTTP_NAME_VALUE 32
 
 typedef enum {
     HTTP_FIELD_ACCEPT = 0,
@@ -266,6 +267,46 @@ static void EveHttpLogJSONBasic(JsonBuilder *js, htp_tx_t *tx)
     }
 }
 
+static void EveHttpLogJSONCustom(LogHttpFileCtx *http_ctx, JsonBuilder *js, htp_tx_t *tx)
+{
+    char *c;
+    HttpField f;
+
+    for (f = HTTP_FIELD_ACCEPT; f < HTTP_FIELD_SIZE; f++)
+    {
+        if ((http_ctx->fields & (1ULL<<f)) != 0)
+        {
+            /* prevent logging a field twice if extended logging is
+                enabled */
+            if (((http_ctx->flags & LOG_HTTP_EXTENDED) == 0) ||
+                ((http_ctx->flags & LOG_HTTP_EXTENDED) !=
+                      (http_fields[f].flags & LOG_HTTP_EXTENDED)))
+            {
+                htp_header_t *h_field = NULL;
+                if ((http_fields[f].flags & LOG_HTTP_REQUEST) != 0)
+                {
+                    if (tx->request_headers != NULL) {
+                        h_field = htp_table_get_c(tx->request_headers,
+                                                  http_fields[f].htp_field);
+                    }
+                } else {
+                    if (tx->response_headers != NULL) {
+                        h_field = htp_table_get_c(tx->response_headers,
+                                                  http_fields[f].htp_field);
+                    }
+                }
+                if (h_field != NULL) {
+                    c = bstr_util_strdup_to_c(h_field->value);
+                    if (c != NULL) {
+                        jb_set_string(js, http_fields[f].config_field, c);
+                        SCFree(c);
+                    }
+                }
+            }
+        }
+    }
+}
+
 static void EveHttpLogJSONExtended(JsonBuilder *js, htp_tx_t *tx)
 {
     /* referer */
@@ -441,11 +482,16 @@ static void EveHttpLogJSON(JsonHttpLogThread *aft, JsonBuilder *js, htp_tx_t *tx
     jb_open_object(js, "http");
 
     EveHttpLogJSONBasic(js, tx);
+    /* log custom fields if configured */
+    if ((!(http_ctx->flags & LOG_HTTP_NAME_VALUE)) && (http_ctx->fields != 0))
+        EveHttpLogJSONCustom(http_ctx, js, tx);
     if (http_ctx->flags & LOG_HTTP_EXTENDED)
         EveHttpLogJSONExtended(js, tx);
-    if (http_ctx->flags & LOG_HTTP_REQ_HEADERS || http_ctx->fields != 0)
+    if (http_ctx->flags & LOG_HTTP_REQ_HEADERS ||
+            ((http_ctx->flags & LOG_HTTP_NAME_VALUE) && (http_ctx->fields != 0)))
         EveHttpLogJSONHeaders(js, LOG_HTTP_REQ_HEADERS, tx, http_ctx);
-    if (http_ctx->flags & LOG_HTTP_RES_HEADERS || http_ctx->fields != 0)
+    if (http_ctx->flags & LOG_HTTP_RES_HEADERS ||
+            ((http_ctx->flags & LOG_HTTP_NAME_VALUE) && (http_ctx->fields != 0)))
         EveHttpLogJSONHeaders(js, LOG_HTTP_RES_HEADERS, tx, http_ctx);
 
     jb_close(js);
@@ -549,6 +595,16 @@ static OutputInitResult OutputHttpLogInitSub(ConfNode *conf, OutputCtx *parent_c
                 http_ctx->flags = LOG_HTTP_EXTENDED;
             }
         }
+
+        const char *name_value = ConfNodeLookupChildValue(conf, "name-value-headers");
+        if (name_value != NULL) {
+            if (ConfValIsTrue(name_value)) {
+                http_ctx->flags |= LOG_HTTP_NAME_VALUE;
+            }
+        } else {
+            http_ctx->flags |= LOG_HTTP_NAME_VALUE;
+        }
+
 
         const char *all_headers = ConfNodeLookupChildValue(conf, "dump-all-headers");
         if (all_headers != NULL) {
