@@ -178,7 +178,7 @@ struct {
     { "link", "link", 0 },
     { "location", "location", 0 },
     { "proxy_authenticate", "proxy-authenticate", 0 },
-    { "referer", "referer", LOG_HTTP_EXTENDED },
+    { "referrer", "referer", LOG_HTTP_EXTENDED },
     { "refresh", "refresh", 0 },
     { "retry_after", "retry-after", 0 },
     { "server", "server", 0 },
