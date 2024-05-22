@@ -3096,7 +3096,14 @@
                     "additionalProperties": false
                 },
                 "ja4": {
-                    "type": "string"
+                    "type": "object",
+                    "optional": true,
+                    "properties": {
+                        "hash": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
                 },
                 "sni": {
                     "description": "Server Name Indication",
@@ -5904,7 +5911,14 @@
                     "additionalProperties": false
                 },
                 "ja4": {
-                    "type": "string"
+                    "type": "object",
+                    "optional": true,
+                    "properties": {
+                        "hash": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
                 }
             },
             "additionalProperties": false
