@@ -87,7 +87,7 @@ void DatasetUnlock(void)
     SCMutexUnlock(&sets_lock);
 }
 
-Dataset *DatasetAlloc(const char *name)
+Dataset *DatasetAlloc(void)
 {
     Dataset *set = SCCalloc(1, sizeof(*set));
     if (set) {
@@ -662,7 +662,7 @@ Dataset *DatasetGet(const char *name, enum DatasetTypes type, const char *save, 
         }
     }
 
-    set = DatasetAlloc(name);
+    set = DatasetAlloc();
     if (set == NULL) {
         goto out_err;
     }

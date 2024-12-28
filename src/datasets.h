@@ -53,7 +53,7 @@ typedef struct Dataset {
 
 enum DatasetTypes DatasetGetTypeFromString(const char *s);
 void DatasetAppendSet(Dataset *set);
-Dataset *DatasetAlloc(const char *name);
+Dataset *DatasetAlloc(void);
 void DatasetLock(void);
 void DatasetUnlock(void);
 Dataset *DatasetSearchByName(const char *name);

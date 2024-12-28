@@ -972,7 +972,7 @@ Dataset *DatajsonGet(const char *name, enum DatasetTypes type, const char *load,
         goto out_err;
     }
 
-    set = DatasetAlloc(name);
+    set = DatasetAlloc();
     if (set == NULL) {
         goto out_err;
     }
