@@ -479,7 +479,7 @@ int EBPFSetupXDP(const char *iface, int fd, uint8_t flags)
         return -1;
     }
 #ifdef HAVE_BPF_XDP_ATTACH
-    int err = bpf_xdp_attach(ifindex, fd, flags, NULL);
+    int err = bpf_xdp_attach((int)ifindex, fd, flags, NULL);
 #else
     /* Fall back to legacy API */
     int err = bpf_set_link_xdp_fd(ifindex, fd, flags);
