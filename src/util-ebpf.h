@@ -96,13 +96,14 @@ void EBPFBypassFree(void *data);
 
 void EBPFDeleteKey(int fd, void *key);
 
+#ifndef BPF_DECLARE_PERCPU
 #define __bpf_percpu_val_align  __attribute__((__aligned__(8)))
 
 #define BPF_DECLARE_PERCPU(type, name, nr_cpus)                          \
         struct { type v; /* padding */ } __bpf_percpu_val_align \
                 name[nr_cpus]
-#define BPF_PERCPU(name, cpu) name[(cpu)].v
-
+#define bpf_percpu(name, cpu) name[(cpu)].v
+#endif /* BPF_DECLARE_PERCPU */
 
 #endif
 

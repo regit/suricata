@@ -2102,8 +2102,8 @@ static int AFPInsertHalfFlow(int mapd, void *key, unsigned int nr_cpus)
     /* We use a per CPU structure so we have to set an array of values as the kernel
      * is not duplicating the data on each CPU by itself. */
     for (i = 0; i < nr_cpus; i++) {
-        BPF_PERCPU(value, i).packets = 0;
-        BPF_PERCPU(value, i).bytes = 0;
+        bpf_percpu(value, i).packets = 0;
+        bpf_percpu(value, i).bytes = 0;
     }
     if (bpf_map_update_elem(mapd, key, value, BPF_NOEXIST) != 0) {
         switch (errno) {

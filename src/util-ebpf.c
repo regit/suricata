@@ -613,11 +613,10 @@ static bool EBPFBypassCheckHalfFlow(Flow *f, FlowBypassInfo *fc,
     }
     for (i = 0; i < eb->cpus_count; i++) {
         /* let's start accumulating value so we can compute the counters */
-        SCLogDebug("%d: Adding pkts %lu bytes %lu", i,
-                BPF_PERCPU(values_array, i).packets,
-                BPF_PERCPU(values_array, i).bytes);
-        pkts_cnt += BPF_PERCPU(values_array, i).packets;
-        bytes_cnt += BPF_PERCPU(values_array, i).bytes;
+        SCLogDebug("%d: Adding pkts %lu bytes %lu", i, bpf_percpu(values_array, i).packets,
+                bpf_percpu(values_array, i).bytes);
+        pkts_cnt += bpf_percpu(values_array, i).packets;
+        bytes_cnt += bpf_percpu(values_array, i).bytes;
     }
     if (index == 0) {
         if (pkts_cnt != fc->todstpktcnt) {
@@ -719,11 +718,10 @@ static int EBPFForEachFlowV4Table(ThreadVars *th_v, LiveDevice *dev, const char 
         }
         for (i = 0; i < tcfg->cpus_count; i++) {
             /* let's start accumulating value so we can compute the counters */
-            SCLogDebug("%d: Adding pkts %lu bytes %lu", i,
-                       BPF_PERCPU(values_array, i).packets,
-                       BPF_PERCPU(values_array, i).bytes);
-            pkts_cnt += BPF_PERCPU(values_array, i).packets;
-            bytes_cnt += BPF_PERCPU(values_array, i).bytes;
+            SCLogDebug("%d: Adding pkts %lu bytes %lu", i, bpf_percpu(values_array, i).packets,
+                    bpf_percpu(values_array, i).bytes);
+            pkts_cnt += bpf_percpu(values_array, i).packets;
+            bytes_cnt += bpf_percpu(values_array, i).bytes;
         }
         /* Get the corresponding Flow in the Flow table to compare and update
          * its counters and lastseen if needed */
@@ -830,11 +828,10 @@ static int EBPFForEachFlowV6Table(ThreadVars *th_v,
         }
         for (i = 0; i < tcfg->cpus_count; i++) {
             /* let's start accumulating value so we can compute the counters */
-            SCLogDebug("%d: Adding pkts %lu bytes %lu", i,
-                       BPF_PERCPU(values_array, i).packets,
-                       BPF_PERCPU(values_array, i).bytes);
-            pkts_cnt += BPF_PERCPU(values_array, i).packets;
-            bytes_cnt += BPF_PERCPU(values_array, i).bytes;
+            SCLogDebug("%d: Adding pkts %lu bytes %lu", i, bpf_percpu(values_array, i).packets,
+                    bpf_percpu(values_array, i).bytes);
+            pkts_cnt += bpf_percpu(values_array, i).packets;
+            bytes_cnt += bpf_percpu(values_array, i).bytes;
         }
         /* Get the corresponding Flow in the Flow table to compare and update
          * its counters  and lastseen if needed */
