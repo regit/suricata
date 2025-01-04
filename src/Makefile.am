@@ -531,6 +531,7 @@ noinst_HEADERS = \
 	util-optimize.h \
 	util-pages.h \
 	util-path.h \
+	util-pcap.h \
 	util-pidfile.h \
 	util-plugin.h \
 	util-pool.h \

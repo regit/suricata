@@ -26,6 +26,7 @@
 #include "threads.h"
 #include "conf.h"
 #include "util-debug.h"
+#include "util-pcap.h"
 
 void ConfSetBPFFilter(
         ConfNode *if_root, ConfNode *if_default, const char *iface, const char **bpf_filter)

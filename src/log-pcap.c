@@ -53,6 +53,7 @@
 #include "util-datalink.h"
 #include "util-misc.h"
 #include "util-path.h"
+#include "util-pcap.h"
 #include "util-time.h"
 
 #define DEFAULT_LOG_FILENAME            "pcaplog"

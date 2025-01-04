@@ -246,16 +246,6 @@ typedef unsigned char u_char;
 #include <w32api/wtypes.h>
 #endif
 
-#ifndef SC_PCAP_DONT_INCLUDE_PCAP_H
-#ifdef HAVE_PCAP_H
-#include <pcap.h>
-#endif
-
-#ifdef HAVE_PCAP_PCAP_H
-#include <pcap/pcap.h>
-#endif
-#endif
-
 #ifdef HAVE_UTIME_H
 #include <utime.h>
 #endif

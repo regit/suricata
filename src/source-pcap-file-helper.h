@@ -23,6 +23,8 @@
 
 #include "suricata-common.h"
 #include "tm-threads.h"
+#include "util-ebpf.h"
+#include "util-pcap.h"
 
 #ifndef SURICATA_SOURCE_PCAP_FILE_HELPER_H
 #define SURICATA_SOURCE_PCAP_FILE_HELPER_H

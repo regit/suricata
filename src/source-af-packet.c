@@ -48,6 +48,7 @@
 #include "util-debug.h"
 #include "util-device.h"
 #include "util-ebpf.h"
+#include "util-pcap.h"
 #include "util-error.h"
 #include "util-privs.h"
 #include "util-optimize.h"
@@ -69,25 +70,6 @@
 
 #if HAVE_LINUX_SOCKIOS_H
 #include <linux/sockios.h>
-#endif
-
-#ifdef HAVE_PACKET_EBPF
-#define PCAP_DONT_INCLUDE_PCAP_BPF_H 1
-#include <bpf/libbpf.h>
-#include <bpf/bpf.h>
-
-struct bpf_program {
-    unsigned int bf_len;
-    struct bpf_insn *bf_insns;
-};
-#endif
-
-#ifdef HAVE_PCAP_H
-#include <pcap.h>
-#endif
-
-#ifdef HAVE_PCAP_PCAP_H
-#include <pcap/pcap.h>
 #endif
 
 #include "util-bpf.h"

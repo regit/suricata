@@ -23,8 +23,9 @@
  * File based pcap packet acquisition support
  */
 
-#include "source-pcap-file-helper.h"
 #include "suricata.h"
+#include "suricata-common.h"
+#include "source-pcap-file-helper.h"
 #include "util-datalink.h"
 #include "util-checksum.h"
 #include "util-profiling.h"

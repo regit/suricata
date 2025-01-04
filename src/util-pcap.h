@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 Open Information Security Foundation
+/* Copyright (C) 2025 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -18,22 +18,18 @@
 /**
  * \file
  *
- * \author Eric Leblond <eric@regit.org>
+ * \author Eric Leblond <el@stamus-networks.com>
  */
 
-#ifndef SURICATA_UTIL_BPF_H
-#define SURICATA_UTIL_BPF_H
+#ifndef SURICATA_UTIL_PCAP_H
+#define SURICATA_UTIL_PCAP_H
 
-#include "conf.h"
-#include "util-ebpf.h"
+#ifdef HAVE_PCAP_H
+#include <pcap.h>
+#endif
 
-void ConfSetBPFFilter(
-        ConfNode *if_root, ConfNode *if_default, const char *iface, const char **bpf_filter);
+#ifdef HAVE_PCAP_PCAP_H
+#include <pcap/pcap.h>
+#endif
 
-int SCBPFCompile(int snaplen_arg, int linktype_arg, struct bpf_program *program,
-                 const char *buf, int optimize, uint32_t mask,
-                 char *errbuf, size_t errbuf_len);
-
-void SCBPFFree(struct bpf_program *program);
-
-#endif /* SURICATA_UTIL_BPF_H */
+#endif /* SURICATA_UTIL_PCAP_H */

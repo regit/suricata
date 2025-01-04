@@ -29,6 +29,16 @@
 
 #ifdef HAVE_PACKET_EBPF
 
+/* prevent later inclusion of pcap.h to redeclare bpf struct */
+#define PCAP_DONT_INCLUDE_PCAP_BPF_H 1
+#include <bpf/libbpf.h>
+#include <bpf/bpf.h>
+
+struct bpf_program {
+    unsigned int bf_len;
+    struct bpf_insn *bf_insns;
+};
+
 #define XDP_FLAGS_UPDATE_IF_NOEXIST	(1U << 0)
 #define XDP_FLAGS_SKB_MODE		(1U << 1)
 #define XDP_FLAGS_DRV_MODE		(1U << 2)
