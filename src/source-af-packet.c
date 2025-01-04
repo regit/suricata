@@ -360,14 +360,14 @@ typedef struct AFPThreadVars_
 
 } AFPThreadVars;
 
-static TmEcode ReceiveAFPThreadInit(ThreadVars *, const void *, void **);
-static void ReceiveAFPThreadExitStats(ThreadVars *, void *);
-static TmEcode ReceiveAFPThreadDeinit(ThreadVars *, void *);
+static TmEcode ReceiveAFPThreadInit(ThreadVars *tv, const void *initdata, void **data);
+static void ReceiveAFPThreadExitStats(ThreadVars *tv, void *data);
+static TmEcode ReceiveAFPThreadDeinit(ThreadVars *tv, void *data);
 static TmEcode ReceiveAFPLoop(ThreadVars *tv, void *data, void *slot);
 
-static TmEcode DecodeAFPThreadInit(ThreadVars *, const void *, void **);
+static TmEcode DecodeAFPThreadInit(ThreadVars *tv, const void *initdata, void **data);
 static TmEcode DecodeAFPThreadDeinit(ThreadVars *tv, void *data);
-static TmEcode DecodeAFP(ThreadVars *, Packet *, void *);
+static TmEcode DecodeAFP(ThreadVars *tv, Packet *p, void *data);
 
 static TmEcode AFPSetBPFFilter(AFPThreadVars *ptv);
 static int AFPGetIfnumByDev(int fd, const char *ifname, int verbose);
@@ -520,7 +520,7 @@ static TmEcode AFPPeersListAdd(AFPThreadVars *ptv)
         TAILQ_FOREACH(pitem, &peerslist.peers, next) {
             if (pitem->peer)
                 continue;
-            if (strcmp(pitem->iface, ptv->out_iface))
+            if (strcmp(pitem->iface, ptv->out_iface) != 0)
                 continue;
             peer->peer = pitem;
             pitem->peer = peer;
@@ -1033,7 +1033,7 @@ static inline int AFPWalkBlock(AFPThreadVars *ptv, struct tpacket_block_desc *pb
                 break;
             case AFP_SURI_FAILURE:
                 /* Internal error but let's just continue and
-                 * treat thenext packet */
+                 * treat the next packet */
                 break;
             case AFP_READ_FAILURE:
                 SCReturnInt(AFP_READ_FAILURE);
@@ -1189,30 +1189,27 @@ static int AFPReadAndDiscardFromRing(AFPThreadVars *ptv, struct timeval *synctv,
         AFPFlushBlock(pbd);
         ptv->frame_offset = (ptv->frame_offset + 1) % ptv->req.v3.tp_block_nr;
         return ret;
-
-    } else
+    }
 #endif
-    {
-        /* Read packet from ring */
-        union thdr h;
-        h.raw = (((union thdr **)ptv->ring.v2)[ptv->frame_offset]);
-        if (h.raw == NULL) {
-            return -1;
-        }
-        if (h.h2->tp_status == TP_STATUS_KERNEL)
-            return 0;
+    /* Read packet from ring */
+    union thdr h;
+    h.raw = (((union thdr **)ptv->ring.v2)[ptv->frame_offset]);
+    if (h.raw == NULL) {
+        return -1;
+    }
+    if (h.h2->tp_status == TP_STATUS_KERNEL)
+        return 0;
 
-        if (((time_t)h.h2->tp_sec > synctv->tv_sec) ||
-                ((time_t)h.h2->tp_sec == synctv->tv_sec &&
-                 (suseconds_t) (h.h2->tp_nsec / 1000) > synctv->tv_usec)) {
-            return 1;
-        }
+    if (((time_t)h.h2->tp_sec > synctv->tv_sec) ||
+            ((time_t)h.h2->tp_sec == synctv->tv_sec &&
+                    (suseconds_t)(h.h2->tp_nsec / 1000) > synctv->tv_usec)) {
+        return 1;
+    }
 
-        (*discarded_pkts)++;
-        h.h2->tp_status = TP_STATUS_KERNEL;
-        if (++ptv->frame_offset >= ptv->req.v2.tp_frame_nr) {
-            ptv->frame_offset = 0;
-        }
+    (*discarded_pkts)++;
+    h.h2->tp_status = TP_STATUS_KERNEL;
+    if (++ptv->frame_offset >= ptv->req.v2.tp_frame_nr) {
+        ptv->frame_offset = 0;
     }
 
     return 0;
@@ -1246,7 +1243,8 @@ static int AFPSynchronizeStart(AFPThreadVars *ptv, uint64_t *discarded_pkts)
             SCLogWarning("%s: poll failed %02x", ptv->iface,
                     fds.revents & (POLLHUP | POLLRDHUP | POLLERR | POLLNVAL));
             return 0;
-        } else if (r > 0) {
+        }
+        if (r > 0) {
             if (AFPPeersListStarted() && synctv.tv_sec == (time_t) 0xffffffff) {
                 gettimeofday(&synctv, NULL);
             }
@@ -1258,6 +1256,8 @@ static int AFPSynchronizeStart(AFPThreadVars *ptv, uint64_t *discarded_pkts)
                     return 1;
                 case -1:
                     return r;
+                default:
+                    continue;
             }
         /* no packets */
         } else if (r == 0 && AFPPeersListStarted()) {
@@ -1410,7 +1410,8 @@ TmEcode ReceiveAFPLoop(ThreadVars *tv, void *data, void *slot)
             if (fds.revents & (POLLHUP | POLLRDHUP)) {
                 AFPSwitchState(ptv, AFP_STATE_DOWN);
                 continue;
-            } else if (fds.revents & POLLERR) {
+            }
+            if (fds.revents & POLLERR) {
                 char c;
                 /* Do a recv to get errno */
                 if (recv(ptv->socket, &c, sizeof c, MSG_PEEK) != -1)
@@ -1418,7 +1419,8 @@ TmEcode ReceiveAFPLoop(ThreadVars *tv, void *data, void *slot)
                 SCLogWarning("%s: failed to poll interface: %s", ptv->iface, strerror(errno));
                 AFPSwitchState(ptv, AFP_STATE_DOWN);
                 continue;
-            } else if (fds.revents & POLLNVAL) {
+            }
+            if (fds.revents & POLLNVAL) {
                 SCLogWarning("%s: invalid poll request: %s", ptv->iface, strerror(errno));
                 AFPSwitchState(ptv, AFP_STATE_DOWN);
                 continue;
@@ -1572,7 +1574,7 @@ sockaddr_ll) + ETH_HLEN) - ETH_HLEN);
 
      */
     int tp_hdrlen = sizeof(struct tpacket_hdr);
-    int snaplen = default_packet_size;
+    uint32_t snaplen = default_packet_size;
 
     if (snaplen == 0) {
         snaplen = GetIfaceMaxPacketSize(ptv->livedev);
@@ -1584,7 +1586,7 @@ sockaddr_ll) + ETH_HLEN) - ETH_HLEN);
 
     ptv->req.v2.tp_frame_size = TPACKET_ALIGN(snaplen +TPACKET_ALIGN(TPACKET_ALIGN(tp_hdrlen) + sizeof(struct sockaddr_ll) + ETH_HLEN) - ETH_HLEN);
     ptv->req.v2.tp_block_size = getpagesize() << order;
-    int frames_per_block = ptv->req.v2.tp_block_size / ptv->req.v2.tp_frame_size;
+    unsigned int frames_per_block = ptv->req.v2.tp_block_size / ptv->req.v2.tp_frame_size;
     if (frames_per_block == 0) {
         SCLogError("%s: Frame size bigger than block size", ptv->iface);
         return -1;
@@ -1604,9 +1606,9 @@ static int AFPComputeRingParamsV3(AFPThreadVars *ptv)
 {
     ptv->req.v3.tp_block_size = ptv->block_size;
     ptv->req.v3.tp_frame_size = 2048;
-    int frames_per_block = 0;
+    unsigned int frames_per_block = 0;
     int tp_hdrlen = sizeof(struct tpacket3_hdr);
-    int snaplen = default_packet_size;
+    uint32_t snaplen = default_packet_size;
 
     if (snaplen == 0) {
         snaplen = GetIfaceMaxPacketSize(ptv->livedev);
@@ -1725,9 +1727,8 @@ static int AFPSetupRing(AFPThreadVars *ptv, char *devname)
                 }
                 SCLogError("%s: failed to setup RX Ring: %s", devname, strerror(errno));
                 return AFP_FATAL_ERROR;
-            } else {
-                break;
             }
+            break;
         }
         if (order < 0) {
             SCLogError("%s: failed to setup RX Ring (order 0 failed)", devname);
@@ -2108,7 +2109,6 @@ static int AFPInsertHalfFlow(int mapd, void *key, unsigned int nr_cpus)
         switch (errno) {
             /* no more place in the hash */
             case E2BIG:
-                return 0;
             /* no more place in the hash for some hardware bypass */
             case EAGAIN:
                 return 0;

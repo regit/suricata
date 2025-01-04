@@ -125,7 +125,7 @@ typedef struct AFPPeer_ {
     SC_ATOMIC_DECLARE(int, sock_usage);
     SC_ATOMIC_DECLARE(int, if_idx);
     SC_ATOMIC_DECLARE(uint64_t, send_errors);
-    int flags;
+    unsigned int flags;
     SCMutex sock_protect;
     int turn; /**< Field used to store initialisation order. */
     SC_ATOMIC_DECLARE(uint8_t, state);
