@@ -599,7 +599,7 @@ static bool EBPFBypassCheckHalfFlow(Flow *f, FlowBypassInfo *fc,
                                     EBPFBypassData *eb, void *key,
                                     int index)
 {
-    int i;
+    unsigned int i;
     uint64_t pkts_cnt = 0;
     uint64_t bytes_cnt = 0;
     /* We use a per CPU structure so we will get a array of values. But if nr_cpus

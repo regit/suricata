@@ -69,7 +69,7 @@ struct pair {
 typedef struct EBPFBypassData_ {
     void *key[2];
     int mapfd;
-    int cpus_count;
+    unsigned int cpus_count;
 } EBPFBypassData;
 
 #define EBPF_SOCKET_FILTER  (1<<0)
