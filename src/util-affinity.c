@@ -209,7 +209,8 @@ ThreadsAffinityType *GetOrAllocAffinityTypeForIfaceOfName(
 #if !defined __CYGWIN__ && !defined OS_WIN32 && !defined __OpenBSD__ && !defined sun
 static void AffinitySetupInit(void)
 {
-    int i, j;
+    int i;
+    int j;
     int ncpu = UtilCpuGetNumProcessorsConfigured();
 
     SCLogDebug("Initialize CPU affinity setup");
