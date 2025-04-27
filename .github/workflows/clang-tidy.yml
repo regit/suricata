@@ -70,6 +70,7 @@ jobs:
                 software-properties-common \
                 zlib1g \
                 zlib1g-dev \
+                python3.10 \
                 sudo
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory /__w/suricata/suricata
