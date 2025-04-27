@@ -79,7 +79,7 @@ jobs:
       - run: ./configure CC=clang-18
       - run: make compile-commands -j ${{ env.CPUS }}
 
-      - uses: cpp-linter/cpp-linter-action@v3
+      - uses: cpp-linter/cpp-linter-action@v2
         id: linter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
