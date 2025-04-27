@@ -18,6 +18,8 @@ jobs:
     name: clang-tidy
     runs-on: ubuntu-latest
     container: ubuntu:24.04
+    env:
+      LLVM_VERSION: 18
     steps:
       - name: Cache ~/.cargo
         uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
@@ -37,9 +39,9 @@ jobs:
                 build-essential \
                 cargo \
                 cbindgen \
-                clang-14 \
-                clang-format-14 \
-                clang-tidy-14 \
+                clang-18 \
+                clang-format-18 \
+                clang-tidy-18 \
                 dpdk-dev \
                 git \
                 jq \
@@ -61,7 +63,7 @@ jobs:
                 libpython3.12 \
                 libtool \
                 libyaml-dev \
-                llvm-14-dev \
+                llvm-18-dev \
                 make \
                 parallel \
                 python-is-python3 \
@@ -70,21 +72,21 @@ jobs:
                 software-properties-common \
                 zlib1g \
                 zlib1g-dev \
-                python3.10 \
                 sudo
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory /__w/suricata/suricata
       - run: ./autogen.sh
-      - run: ./configure CC=clang-14
+      - run: ./configure CC=clang-18
       - run: make compile-commands -j ${{ env.CPUS }}
 
-      - uses: cpp-linter/cpp-linter-action@v2
+      - uses: cpp-linter/cpp-linter-action@v3
         id: linter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           style: ''  # disable clang-format checks. 
           tidy-checks: '' # Use .clang-tidy config file. 
+          version: ${{ env.LLVM_VERSION }}
 
       - name: Fail fast?!
         if: steps.linter.outputs.clang-tidy-checks-failed > 0
