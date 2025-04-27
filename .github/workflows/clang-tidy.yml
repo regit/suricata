@@ -4,7 +4,7 @@ on:
     branches: [master]
     paths: ['**.c', '**.h', '**.am']
   push:
-    paths: ['**.c', '**.h', '**.am']
+    paths: ['**.c', '**.h', '**.am', '*.yml']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
