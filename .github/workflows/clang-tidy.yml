@@ -60,7 +60,7 @@ jobs:
                 libnuma-dev \
                 libpcap-dev \
                 libpcre2-dev \
-                libpython3.12 \
+                libpython3.10 \
                 libtool \
                 libyaml-dev \
                 llvm-14-dev \
