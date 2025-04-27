@@ -4,6 +4,7 @@ on:
     branches: [master]
     paths: ['**.c', '**.h', '**.am']
   push:
+    paths: ['**.c', '**.h', '**.am']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -42,6 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     container: ubuntu:22.04
     needs: [prepare-cbindgen]
+    permissions:
+      pull-requests: write
     env:
       LLVM_VERSION: 14
     steps:
@@ -112,6 +115,8 @@ jobs:
           style: ''  # disable clang-format checks. 
           tidy-checks: '' # Use .clang-tidy config file. 
           version: ${{ env.LLVM_VERSION }}
+          # only 'update' a single comment in a pull request's thread. 
+          thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
 
       - name: Fail fast?!
         if: steps.linter.outputs.clang-tidy-checks-failed > 0
