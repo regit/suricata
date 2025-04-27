@@ -6,12 +6,51 @@ on:
   push:
     paths: ['**.c', '**.h', '**.am']
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEBIAN_FRONTEND: "noninteractive"
+
 jobs:
-  cpp-linter:
+
+  prepare-deps:
+    name: Prepare dependencies
+    uses: ./.github/workflows/prepare-deps.yml
+
+  prepare-cbindgen:
+    name: Prepare cbindgen
     runs-on: ubuntu-latest
+    steps:
+      - name: Cache ~/.cargo
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cargo
+          key: ${{ github.job }}-cargo
+      - name: Installing Rust
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustup target add x86_64-unknown-linux-musl
+      - name: Building static cbindgen for Linux
+        run: |
+          cargo install --target x86_64-unknown-linux-musl --debug cbindgen
+          cp $HOME/.cargo/bin/cbindgen .
+      - name: Uploading prep archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cbindgen
+          path: .
+
+  clang-tidy:
+    runs-on: ubuntu-latest
+    needs: [prepare-deps, prepare-cbindgen]
     steps:
       - uses: actions/checkout@v4
 
+
+      # Cache Rust stuff.
       - name: Cache cargo registry
         uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
         with:
