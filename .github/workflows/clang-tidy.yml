@@ -43,7 +43,7 @@ jobs:
                 build-essential \
                 cargo \
                 cbindgen \
-                clang-14 \
+                clang-19 \
                 coccinelle \
                 dpdk-dev \
                 git \
@@ -84,7 +84,7 @@ jobs:
       - run: tar xf prep/suricata-update.tar.gz
       - run: tar xf prep/suricata-verify.tar.gz
       - run: ./autogen.sh
-      - run: ./configure --enable-unittests --enable-coccinelle
+      - run: ./configure CC=clang
       - run: make compile-commands -j ${{ env.CPUS }}
 
       - uses: cpp-linter/cpp-linter-action@v2
