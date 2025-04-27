@@ -17,7 +17,7 @@ jobs:
   clang-tidy:
     name: clang-tidy
     runs-on: ubuntu-latest
-    container: ubuntu:24.04
+    #container: ubuntu:24.04
     steps:
       - name: Cache ~/.cargo
         uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
@@ -37,7 +37,9 @@ jobs:
                 build-essential \
                 cargo \
                 cbindgen \
-                clang-19 \
+                clang-14 \
+                clang-format-14 \
+                clang-tidy-14 \
                 dpdk-dev \
                 git \
                 jq \
@@ -71,7 +73,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory /__w/suricata/suricata
       - run: ./autogen.sh
-      - run: ./configure CC=clang-19
+      - run: ./configure CC=clang-14
       - run: make compile-commands -j ${{ env.CPUS }}
 
       - uses: cpp-linter/cpp-linter-action@v2
