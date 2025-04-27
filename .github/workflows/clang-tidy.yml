@@ -14,15 +14,10 @@ env:
 
 jobs:
 
-  prepare-deps:
-    name: Prepare dependencies
-    uses: ./.github/workflows/prepare-deps.yml
-
   clang-tidy:
     name: clang-tidy
     runs-on: ubuntu-latest
     container: ubuntu:24.04
-    needs: [prepare-deps]
     steps:
       - name: Cache ~/.cargo
         uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
@@ -43,7 +38,6 @@ jobs:
                 cargo \
                 cbindgen \
                 clang-19 \
-                coccinelle \
                 dpdk-dev \
                 git \
                 jq \
@@ -76,12 +70,6 @@ jobs:
                 zlib1g-dev
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory /__w/suricata/suricata
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e
-        with:
-          name: prep
-          path: prep
-      - run: tar xf prep/suricata-update.tar.gz
-      - run: tar xf prep/suricata-verify.tar.gz
       - run: ./autogen.sh
       - run: ./configure CC=clang-19
       - run: make compile-commands -j ${{ env.CPUS }}
