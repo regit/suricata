@@ -1,0 +1,70 @@
+name: "Clang Tidy Action"
+on:
+  pull_request:
+    branches: [master]
+    paths: ['**.c', '**.h', '**.am']
+  push:
+    paths: ['**.c', '**.h', '**.am']
+
+jobs:
+  cpp-linter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo registry
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry
+
+      - name: Install dependencies
+        run: |
+          apt update
+          apt -y install \
+                libpcre2-dev \
+                build-essential \
+                autoconf \
+                automake \
+                cargo \
+                cbindgen \
+                clang \
+                git \
+                libtool \
+                libpcap-dev \
+                libnet1-dev \
+                libyaml-0-2 \
+                libyaml-dev \
+                libcap-ng-dev \
+                libcap-ng0 \
+                libmagic-dev \
+                libnetfilter-queue-dev \
+                libnetfilter-queue1 \
+                libnfnetlink-dev \
+                libnfnetlink0 \
+                libhiredis-dev \
+                libjansson-dev \
+                make \
+                rustc \
+                python-is-python3 \
+                python3 \
+                software-properties-common \
+                wget \
+                zlib1g \
+                zlib1g-dev
+      - run: ./autogen.sh
+      - run: ./configure --enable-warnings --enable-unittests CC=clang
+      - run: make compile-commands
+
+      - uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: ''  # disable clang-format checks. 
+          tidy-checks: '' # Use .clang-tidy config file. 
+
+
+      - name: Fail fast?!
+        if: steps.linter.outputs.clang-tidy-checks-failed > 0
+        run: exit 1
