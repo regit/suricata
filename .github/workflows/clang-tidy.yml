@@ -117,6 +117,7 @@ jobs:
           version: ${{ env.LLVM_VERSION }}
           # only 'update' a single comment in a pull request's thread. 
           thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
+          lines-changed-only: true
 
       - name: Fail fast?!
         if: steps.linter.outputs.clang-tidy-checks-failed > 0
