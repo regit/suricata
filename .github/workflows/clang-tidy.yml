@@ -84,7 +84,7 @@ jobs:
       - run: tar xf prep/suricata-update.tar.gz
       - run: tar xf prep/suricata-verify.tar.gz
       - run: ./autogen.sh
-      - run: ./configure CC=clang
+      - run: ./configure CC=clang-19
       - run: make compile-commands -j ${{ env.CPUS }}
 
       - uses: cpp-linter/cpp-linter-action@v2
