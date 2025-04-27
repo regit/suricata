@@ -45,8 +45,8 @@ jobs:
     needs: [prepare-cbindgen]
     permissions:
       pull-requests: write
-      contents: write
-      metadata: read
+      contents: read
+      discussions: write
     env:
       LLVM_VERSION: 14
     steps:
