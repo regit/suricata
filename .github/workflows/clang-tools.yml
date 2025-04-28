@@ -108,8 +108,11 @@ jobs:
       - run: ./autogen.sh
       - run: ./configure CC=clang-14
       - run: make compile-commands -j ${{ env.CPUS }}
-      - run: cp compile_commands.json src/
-
+      - name: Archive compile-commands.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile-commands
+          path: compile-commands.json
       - uses: cpp-linter/cpp-linter-action@v2
         id: linter
         env:
@@ -123,7 +126,6 @@ jobs:
           lines-changed-only: true
           tidy-review: true
           passive-reviews: true
-          repo-root: src
 
       - name: Fail on clang tidy errors
         if: steps.linter.outputs.clang-tidy-checks-failed > 0
