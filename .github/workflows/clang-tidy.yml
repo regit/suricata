@@ -1,4 +1,4 @@
-name: "Clang Tidy Action"
+name: "Clang Tools Checks"
 on:
   pull_request:
     branches: [master]
