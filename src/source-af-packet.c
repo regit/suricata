@@ -929,6 +929,9 @@ static int AFPReadFromRing(AFPThreadVars *ptv)
         Packet *p = PacketGetFromQueueOrAlloc();
         if (p == NULL) {
             return AFPSuriFailure(ptv, h);
+        } else {
+            SCLogDebug("pktlen: %" PRIu32 " (pkt %p, pkt data %p)",
+                    GET_PKT_LEN(p), p, GET_PKT_DATA(p));
         }
         AFPReadFromRingSetupPacket(ptv, h, tp_status, p);
 
