@@ -122,6 +122,7 @@ jobs:
           lines-changed-only: true
           tidy-review: true
           passive-reviews: true
+          repo-root: 'src'
 
       - name: Fail on clang tidy errors
         if: steps.linter.outputs.clang-tidy-checks-failed > 0
