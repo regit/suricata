@@ -38,8 +38,8 @@ jobs:
           name: cbindgen
           path: .
 
-  clang-tidy:
-    name: clang-tidy
+  clang-tools:
+    name: clang-tools
     runs-on: ubuntu-latest
     container: ubuntu:22.04
     needs: [prepare-cbindgen]
@@ -121,9 +121,12 @@ jobs:
           thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
           lines-changed-only: true
           tidy-review: true
-          format-review: true
           passive-reviews: true
 
-      - name: Fail fast?!
+      - name: Fail on clang tidy errors
         if: steps.linter.outputs.clang-tidy-checks-failed > 0
+        run: exit 1
+
+      - name: Fail on clang format errors
+        if: steps.linter.outputs.clang-format-checks-failed > 0
         run: exit 1
