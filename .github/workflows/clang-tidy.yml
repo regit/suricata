@@ -121,6 +121,7 @@ jobs:
           thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
           lines-changed-only: true
           tidy-review: true
+          passive-reviews: true
 
       - name: Fail fast?!
         if: steps.linter.outputs.clang-tidy-checks-failed > 0
