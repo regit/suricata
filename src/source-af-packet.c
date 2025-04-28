@@ -935,7 +935,7 @@ static int AFPReadFromRing(AFPThreadVars *ptv)
         if (TmThreadsSlotProcessPkt(ptv->tv, ptv->slot, p) != TM_ECODE_OK) {
             return AFPSuriFailure(ptv, h);
         } else {
-            SCLogDebug("pktlen: %" PRIu32 " (pkt %p, pkt data %p)",
+            SCLogNotice("pktlen: %" PRIu32 " (pkt %p, pkt data %p)",
                     GET_PKT_LEN(p), p, GET_PKT_DATA(p));
         }
 next_frame:
