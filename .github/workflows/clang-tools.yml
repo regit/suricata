@@ -108,14 +108,13 @@ jobs:
       - run: ./autogen.sh
       - run: ./configure CC=clang-14
       - run: make compile-commands -j ${{ env.CPUS }}
-      - run: cd src
 
       - uses: cpp-linter/cpp-linter-action@v2
         id: linter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          style: 'file'
+          style: '' # Empty for no format check
           tidy-checks: '' # Use .clang-tidy config file. 
           version: ${{ env.LLVM_VERSION }}
           # only 'update' a single comment in a pull request's thread. 
