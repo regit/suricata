@@ -64,6 +64,8 @@
             ;;
     esac
 
+    AM_CONDITIONAL([HAVE_CLANG], [test "x$compiler" == "xclang"])
+
     # Checks for programs.
     AC_PROG_AWK
     AC_PROG_CC
@@ -224,6 +226,11 @@
         AC_DEFINE([HAVE_POPCNT64], [1], [Use _popcnt64]),
         [], [
             #include <x86intrin.h> 
+            ])
+    AC_CHECK_DECL([quick_exit],
+        AC_DEFINE([HAVE_QUICK_EXIT], [1], [Use quick_exit]),
+        [], [
+            #include <stdlib.h>
             ])
 
     AC_CHECK_HEADERS([malloc.h])

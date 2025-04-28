@@ -3,7 +3,7 @@
 AUTOMAKE_OPTIONS = foreign 1.4
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = ChangeLog COPYING LICENSE suricata.yaml.in \
-             threshold.config SECURITY.md \
+             threshold.config SECURITY.md shell.nix \
              $(SURICATA_UPDATE_DIR) \
 	     lua \
 	     acsite.m4 \
@@ -17,6 +17,8 @@ SUBDIRS = rust src plugins qa rules doc etc python ebpf \
 DIST_SUBDIRS = $(SUBDIRS) examples/lib/simple examples/lib/custom
 
 CLEANFILES = stamp-h[0-9]*
+
+DISTCLEANFILES = compile_commands.json
 
 install-data-am:
 	@echo "Run 'make install-conf' if you want to install initial configuration files. Or 'make install-full' to install configuration and rules";
@@ -71,3 +73,16 @@ install-library:
 
 install-headers:
 	cd src && $(MAKE) $@
+
+compile-commands:
+if HAVE_CLANG
+	$(MAKE) -C src clean
+	TMP_DIR=$$(mktemp -d --suffix=.suricata-compile-commands) && \
+	$(MAKE) EXTRA_CFLAGS="-MJ $$TMP_DIR/\$$*.json" && \
+	echo '[' > $(top_builddir)/compile_commands.json && \
+	cat $$TMP_DIR/*.json >> $(top_builddir)/compile_commands.json && \
+	echo ']' >> $(top_builddir)/compile_commands.json && \
+	rm -rf $$TMP_DIR
+else
+	@echo "clang compile_commands.json generation not supported with current compiler"
+endif

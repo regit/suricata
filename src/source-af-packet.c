@@ -1,4 +1,4 @@
-/* Copyright (C) 2011-2021 Open Information Security Foundation
+/* Copyright (C) 2011-2025 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -929,11 +929,17 @@ static int AFPReadFromRing(AFPThreadVars *ptv)
         Packet *p = PacketGetFromQueueOrAlloc();
         if (p == NULL) {
             return AFPSuriFailure(ptv, h);
+        } else {
+            SCLogDebug("pktlen: %" PRIu32 " (pkt %p, pkt data %p)",
+                    GET_PKT_LEN(p), p, GET_PKT_DATA(p));
         }
         AFPReadFromRingSetupPacket(ptv, h, tp_status, p);
 
         if (TmThreadsSlotProcessPkt(ptv->tv, ptv->slot, p) != TM_ECODE_OK) {
             return AFPSuriFailure(ptv, h);
+        } else {
+            SCLogNotice("pktlen: %" PRIu32 " (pkt %p, pkt data %p)",
+                    GET_PKT_LEN(p), p, GET_PKT_DATA(p));
         }
 next_frame:
         if (++ptv->frame_offset >= ptv->req.v2.tp_frame_nr) {

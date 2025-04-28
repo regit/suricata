@@ -1,0 +1,136 @@
+name: "Clang Tools Checks"
+on:
+  pull_request:
+    branches: [master]
+    paths: ['**.c', '**.h', '**.am']
+  push:
+    paths: ['**.c', '**.h', '**.am']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEBIAN_FRONTEND: "noninteractive"
+
+jobs:
+  prepare-cbindgen:
+    name: Prepare cbindgen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache ~/.cargo
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cargo
+          key: ${{ github.job }}-cargo
+      - name: Installing Rust
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustup target add x86_64-unknown-linux-musl
+      - name: Building static cbindgen for Linux
+        run: |
+          cargo install --target x86_64-unknown-linux-musl --debug cbindgen
+          cp $HOME/.cargo/bin/cbindgen .
+      - name: Uploading prep archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cbindgen
+          path: .
+
+  clang-tools:
+    name: clang-tools
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+    needs: [prepare-cbindgen]
+    permissions:
+      pull-requests: write
+      contents: read
+      discussions: write
+    env:
+      LLVM_VERSION: 14
+    steps:
+      - name: Cache ~/.cargo
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry
+
+      - name: Determine number of CPUs
+        run: echo CPUS=$(nproc --all) >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          apt update
+          apt -y install \
+                autoconf \
+                automake \
+                build-essential \
+                cargo \
+                cbindgen \
+                clang-14 \
+                clang-format-14 \
+                clang-tidy-14 \
+                dpdk-dev \
+                git \
+                jq \
+                libcap-ng-dev \
+                libevent-dev \
+                libevent-pthreads-2.1-7 \
+                libhiredis-dev \
+                libhyperscan-dev \
+                libjansson-dev \
+                libmagic-dev \
+                libnet1-dev \
+                libnetfilter-queue-dev \
+                libnetfilter-queue1 \
+                libnfnetlink-dev \
+                libnfnetlink0 \
+                libnuma-dev \
+                libpcap-dev \
+                libpcre2-dev \
+                libpython3.10 \
+                libtool \
+                libyaml-dev \
+                llvm-14-dev \
+                make \
+                parallel \
+                python-is-python3 \
+                python3-yaml \
+                rustc \
+                software-properties-common \
+                zlib1g \
+                zlib1g-dev \
+                sudo
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: git config --global --add safe.directory /__w/suricata/suricata
+      - uses: ./.github/actions/install-cbindgen
+      - run: ./autogen.sh
+      - run: ./configure CC=clang-14
+      - run: make compile-commands -j ${{ env.CPUS }}
+      - name: Archive compile_commands.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile_commands
+          path: compile_commands.json
+      - uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: '' # Empty for no format check
+          tidy-checks: '' # Use .clang-tidy config file. 
+          version: ${{ env.LLVM_VERSION }}
+          # only 'update' a single comment in a pull request's thread. 
+          thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
+          lines-changed-only: true
+          tidy-review: true
+          passive-reviews: true
+
+      - name: Fail on clang tidy errors
+        if: steps.linter.outputs.clang-tidy-checks-failed > 0
+        run: exit 1
+
+      - name: Fail on clang format errors
+        if: steps.linter.outputs.clang-format-checks-failed > 0
+        run: exit 1
