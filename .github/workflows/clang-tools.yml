@@ -108,11 +108,11 @@ jobs:
       - run: ./autogen.sh
       - run: ./configure CC=clang-14
       - run: make compile-commands -j ${{ env.CPUS }}
-      - name: Archive compile-commands.json
+      - name: Archive compile_commands.json
         uses: actions/upload-artifact@v4
         with:
-          name: compile-commands
-          path: compile-commands.json
+          name: compile_commands
+          path: compile_commands.json
       - uses: cpp-linter/cpp-linter-action@v2
         id: linter
         env:
