@@ -114,7 +114,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          style: '.clang-format'  # disable clang-format checks. 
+          style: 'file'
           tidy-checks: '' # Use .clang-tidy config file. 
           version: ${{ env.LLVM_VERSION }}
           # only 'update' a single comment in a pull request's thread. 
