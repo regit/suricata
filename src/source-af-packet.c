@@ -930,16 +930,16 @@ static int AFPReadFromRing(AFPThreadVars *ptv)
         if (p == NULL) {
             return AFPSuriFailure(ptv, h);
         } else {
-            SCLogDebug("pktlen: %" PRIu32 " (pkt %p, pkt data %p)",
-                    GET_PKT_LEN(p), p, GET_PKT_DATA(p));
+            SCLogDebug("pktlen: %" PRIu32 " (pkt %p, pkt data %p)", GET_PKT_LEN(p), p,
+                    GET_PKT_DATA(p));
         }
         AFPReadFromRingSetupPacket(ptv, h, tp_status, p);
 
         if (TmThreadsSlotProcessPkt(ptv->tv, ptv->slot, p) != TM_ECODE_OK) {
             return AFPSuriFailure(ptv, h);
         } else {
-            SCLogNotice("pktlen: %" PRIu32 " (pkt %p, pkt data %p)",
-                    GET_PKT_LEN(p), p, GET_PKT_DATA(p));
+            SCLogNotice("pktlen: %" PRIu32 " (pkt %p, pkt data %p)", GET_PKT_LEN(p), p,
+                    GET_PKT_DATA(p));
         }
 next_frame:
         if (++ptv->frame_offset >= ptv->req.v2.tp_frame_nr) {
