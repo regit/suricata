@@ -27,6 +27,8 @@
 #include "decode.h"
 #include "tm-modules.h"
 
+struct landlock_ruleset;
+
 #define DEFAULT_LOG_MODE_APPEND     "yes"
 #define DEFAULT_LOG_FILETYPE        "regular"
 
@@ -77,6 +79,10 @@ typedef struct OutputModule_ {
     enum SCOutputStreamingType stream_type;
     int tc_log_progress;
     int ts_log_progress;
+
+    /** Optional callback invoked before landlock sandboxing is enforced. May
+     *  be NULL. Set with OutputGetModuleByConfName() right after registration. */
+    void (*LandlockEnable)(struct landlock_ruleset *ruleset);
 
     TAILQ_ENTRY(OutputModule_) entries;
 } OutputModule;
