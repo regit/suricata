@@ -51,6 +51,7 @@
 #include "util-conf.h"
 #include "util-cpu.h"
 #include "util-datalink.h"
+#include "util-landlock.h"
 #include "util-misc.h"
 #include "util-path.h"
 #include "util-time.h"
@@ -217,6 +218,26 @@ static OutputInitResult PcapLogInitCtx(SCConfNode *);
 static void PcapLogProfilingDump(PcapLogData *);
 static bool PcapLogCondition(ThreadVars *, void *, const Packet *);
 
+static void PcapLogLandlockEnable(struct landlock_ruleset *ruleset)
+{
+    SCConfNode *conf = SCConfGetNode("outputs.pcap-log");
+    if (conf == NULL)
+        return;
+    const char *enabled = SCConfNodeLookupChildValue(conf, "enabled");
+    if (enabled == NULL || !SCConfValIsTrue(enabled))
+        return;
+    const char *s_dir = SCConfNodeLookupChildValue(conf, "dir");
+    if (s_dir == NULL)
+        return; /* default dir is the log directory, already granted */
+    if (PathIsAbsolute(s_dir)) {
+        SCLandlockGrantWritePath(ruleset, s_dir);
+    } else {
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", SCConfigGetLogDirectory(), s_dir);
+        SCLandlockGrantWritePath(ruleset, path);
+    }
+}
+
 void PcapLogRegister(void)
 {
     OutputPacketLoggerFunctions output_logger_functions = {
@@ -228,6 +249,10 @@ void PcapLogRegister(void)
     };
     OutputRegisterPacketModule(
             LOGGER_PCAP, MODULE_NAME, "pcap-log", PcapLogInitCtx, &output_logger_functions);
+    OutputModule *module = OutputGetModuleByConfName("pcap-log");
+    if (module != NULL) {
+        module->LandlockEnable = PcapLogLandlockEnable;
+    }
     PcapLogProfileSetup();
     SC_ATOMIC_INIT(thread_cnt);
     SC_ATOMIC_SET(thread_cnt, 1); /* first id is 1 */
