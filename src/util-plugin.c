@@ -172,6 +172,16 @@ SCCapturePlugin *SCPluginFindCaptureByName(const char *name)
     return plugin;
 }
 
+void SCPluginsLandlockEnable(struct landlock_ruleset *ruleset)
+{
+    PluginListNode *node;
+    TAILQ_FOREACH (node, &plugins, entries) {
+        if (node->plugin->LandlockEnable != NULL) {
+            node->plugin->LandlockEnable(ruleset);
+        }
+    }
+}
+
 int SCPluginRegisterAppLayer(SCAppLayerPlugin *plugin)
 {
     AppProto alproto = AppProtoNewProtoFromString(plugin->name);
