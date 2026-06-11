@@ -20,10 +20,15 @@
 
 #include "suricata-plugin.h"
 
+struct landlock_ruleset;
+
 void SCPluginsLoad(const char *capture_plugin_name, const char *capture_plugin_args,
         const char **additional_plugins);
 SCCapturePlugin *SCPluginFindCaptureByName(const char *name);
 
 bool RegisterPlugin(SCPlugin *, void *);
+
+/** Invoke LandlockEnable on every loaded plugin that defines one. */
+void SCPluginsLandlockEnable(struct landlock_ruleset *ruleset);
 
 #endif /* SURICATA_UTIL_PLUGIN_H */
