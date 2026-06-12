@@ -56,6 +56,43 @@ resolved at runtime.
 The ``SCPlugin`` begins by a version number ``SC_API_VERSION`` for runtime compatibility
 between Suricata and the plugin.
 
+Declaring Landlock permissions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When Landlock sandboxing is enabled (see :ref:`landlock`), Suricata
+restricts the set of files and network ports the process can access.
+A plugin that needs to read or write outside the standard Suricata
+directories, or that opens network sockets, can declare its
+requirements through the optional ``LandlockEnable`` callback on
+``SCPlugin``:
+
+.. code-block:: c
+
+   #include "util-landlock.h"
+
+   static void MyPluginLandlockEnable(struct landlock_ruleset *ruleset)
+   {
+       SCLandlockGrantReadPath(ruleset, "/etc/my-plugin/");
+       SCLandlockGrantWritePath(ruleset, "/var/lib/my-plugin/");
+       SCLandlockGrantNetConnectTCP(ruleset, 5044);
+   }
+
+   const SCPlugin PluginRegistration = {
+       .version = SC_API_VERSION,
+       /* ... */
+       .Init = MyPluginInit,
+       .LandlockEnable = MyPluginLandlockEnable,
+   };
+
+The callback is invoked once, just before the sandbox is enforced.
+``ruleset`` is an opaque handle: callbacks must only use the
+``SCLandlockGrant*`` helpers declared in ``util-landlock.h``. The
+``LandlockEnable`` field may be left ``NULL`` when no extra
+permissions are required.
+
+The network grant helpers silently no-op on kernels whose Landlock ABI
+does not support network rules, so callbacks do not need to guard them.
+
 Known limitations are:
 
 - Plugins can only use simple logging as defined by ``EveJsonSimpleTxLogFunc``

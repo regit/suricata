@@ -38,6 +38,38 @@ Following your running configuration you may have to add some directories.
 There are two lists you can use, ``write`` to add directories where write is needed
 and ``read`` for directories where read access is needed.
 
+Built-in outputs (``pcap-log``, ``eve-log`` with ``redis``, ``unix_*`` and custom
+``filename`` paths, ...) declare the filesystem and network access they need on
+their own. Plugins can do the same by implementing the ``LandlockEnable``
+callback on ``SCPlugin`` (see :ref:`libsuricata`). The lists above only need to
+contain directories that are not covered by these declarations.
+
+Granting access to network ports
+--------------------------------
+
+When a module or plugin cannot declare its needs (for example a third-party
+filetype that opens an unknown TCP service), TCP ports can be granted manually
+under ``security.landlock.network``. There is no default value: ports listed
+here are *added* to whatever the modules and plugins have already declared.
+
+::
+
+  landlock:
+    enabled: yes
+    network:
+      connect:
+        tcp:
+          - 6379
+          - 9092
+      bind:
+        tcp:
+          - 8080
+
+``connect.tcp`` lists ports the process is allowed to connect to (e.g. a Redis
+or Kafka broker). ``bind.tcp`` lists ports it is allowed to bind/listen on.
+Both options are silently ignored on kernels whose Landlock ABI does not
+support network rules (ABI < 4).
+
 Landlock is not active in some distributions and you may need to activate it
 at boot by adding ``lsm=landock`` to the Linux command line. For example,
 on a Debian distribution with at least a linux 5.13, you can edit ``/etc/default/grub``
