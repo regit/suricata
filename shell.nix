@@ -21,6 +21,7 @@ in with pkgs;
       libtool
       pkg-config
       elfutils
+      hiredis
       jansson
       libbpf_0
       libcap_ng
