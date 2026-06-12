@@ -14,7 +14,8 @@ Landlock sandboxing policy.
 Landlock is not active by default and needs to be activated in the
 YAML configuration. Configuration should come with sane default (defined
 at build time) and the command line options are used to dynamically add
-some permissions.
+some permissions. So, if we omit some rare cases described below, landlock
+sandboxing should work out of the box.
 
 Please note that Landlock is in blocking mode by default so careful testing
 is needed in production.
@@ -25,6 +26,7 @@ To enable Landlock, edit the YAML and set ``enabled`` to ``yes``:
 
   landlock:
     enabled: yes
+    plugin-setup: true
     directories:
       write:
         - /var/log/suricata/
@@ -37,6 +39,56 @@ To enable Landlock, edit the YAML and set ``enabled`` to ``yes``:
 Following your running configuration you may have to add some directories.
 There are two lists you can use, ``write`` to add directories where write is needed
 and ``read`` for directories where read access is needed.
+
+Lua scripts writing their own files
+-----------------------------------
+
+Suricata cannot know in advance which files a Lua output script will open:
+the path is chosen by the script at runtime, often built from per-flow data
+such as addresses and ports. Such writes are therefore *not* granted
+automatically and will fail with ``Permission denied`` once the sandbox is
+active, for example::
+
+  Info: output-lua: failed to run script: ./streaming-tcp.lua:25:
+  /var/log/suricata/6-10.0.0.1-10.0.0.2-1234-80: Permission denied
+
+When using a Lua script that writes files on its own, add the target
+directory to ``security.landlock.directories.write``::
+
+  landlock:
+    enabled: yes
+    directories:
+      write:
+        - /var/log/suricata/
+
+Scripts that only write through Suricata's own logging facilities do not
+need any extra permission.
+
+Granting access to network ports
+--------------------------------
+
+When a module or plugin cannot declare its needs (for example a third-party
+filetype that opens an unknown TCP service), TCP ports can be granted manually
+under ``security.landlock.network``. There is no default value: ports listed
+here are *added* to whatever the modules and plugins have already declared.
+
+::
+
+  landlock:
+    enabled: yes
+    network:
+      connect:
+        tcp:
+          - 6379
+          - 9092
+      bind:
+        tcp:
+          - 8080
+
+``connect.tcp`` lists ports the process is allowed to connect to (e.g. a Redis
+or Kafka broker). ``bind.tcp`` lists ports it is allowed to bind/listen on.
+Both options are silently ignored on kernels whose Landlock ABI does not
+support network rules (ABI < 4).
 
 Landlock is not active in some distributions and you may need to activate it
 at boot by adding ``lsm=landock`` to the Linux command line. For example,
