@@ -25,6 +25,7 @@ To enable Landlock, edit the YAML and set ``enabled`` to ``yes``:
 
   landlock:
     enabled: yes
+    plugin-setup: false
     directories:
       write:
         - /var/log/suricata/
@@ -37,6 +38,48 @@ To enable Landlock, edit the YAML and set ``enabled`` to ``yes``:
 Following your running configuration you may have to add some directories.
 There are two lists you can use, ``write`` to add directories where write is needed
 and ``read`` for directories where read access is needed.
+
+Built-in outputs (``pcap-log``, ``eve-log`` with ``redis``, ``unix_*`` and custom
+``filename`` paths, ...) declare the filesystem and network access they need on
+their own. Plugins can do the same by implementing the ``LandlockEnable``
+callback on ``SCPlugin`` (see :ref:`libsuricata`). The lists above only need to
+contain directories that are not covered by these declarations. If ever letting
+the plugin set up landlock is not wanted, one can set the `plugin-setup` option
+to `false`.
+
+A handful of system pseudo-files are also granted read access automatically:
+``/sys/devices/system/cpu`` (online-CPU detection via ``sysconf``), ``/proc/stat``,
+``/proc/sys/vm/overcommit_memory`` (allocator tuning) and ``/dev/urandom`` (RNG
+seeding fallback). These are probed by glibc, the system allocator and the Rust
+standard library during normal startup; granting them avoids spurious ``EACCES``
+errors and Landlock audit noise without meaningfully widening the sandbox.
+Missing paths are silently skipped.
+
+Granting access to network ports
+--------------------------------
+
+When a module or plugin cannot declare its needs (for example a third-party
+filetype that opens an unknown TCP service), TCP ports can be granted manually
+under ``security.landlock.network``. There is no default value: ports listed
+here are *added* to whatever the modules and plugins have already declared.
+
+::
+
+  landlock:
+    enabled: yes
+    network:
+      connect:
+        tcp:
+          - 6379
+          - 9092
+      bind:
+        tcp:
+          - 8080
+
+``connect.tcp`` lists ports the process is allowed to connect to (e.g. a Redis
+or Kafka broker). ``bind.tcp`` lists ports it is allowed to bind/listen on.
+Both options are silently ignored on kernels whose Landlock ABI does not
+support network rules (ABI < 4).
 
 Landlock is not active in some distributions and you may need to activate it
 at boot by adding ``lsm=landock`` to the Linux command line. For example,
