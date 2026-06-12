@@ -25,6 +25,7 @@
 #include "detect-engine.h"
 #include "feature.h"
 #include "output.h"
+#include "util-byte.h"
 #include "util-conf.h"
 #include "util-file.h"
 #include "util-landlock.h"
@@ -228,8 +229,8 @@ void SCLandlockGrantReadPath(struct landlock_ruleset *ruleset, const char *direc
     }
 }
 
-static void LandlockGrantNetPort(struct landlock_ruleset *ruleset, uint16_t port, uint64_t access,
-        const char *access_name)
+static void LandlockGrantNetPort(
+        struct landlock_ruleset *ruleset, uint16_t port, uint64_t access, const char *access_name)
 {
     if (ruleset == NULL)
         return;
@@ -266,6 +267,31 @@ void SCLandlockGrantNetConnectTCP(struct landlock_ruleset *ruleset, uint16_t por
     (void)ruleset;
     (void)port;
 #endif
+}
+
+static void LandlockSandboxingApplyNetPorts(struct landlock_ruleset *ruleset, const char *conf_key,
+        void (*grant)(struct landlock_ruleset *, uint16_t))
+{
+    SCConfNode *ports = SCConfGetNode(conf_key);
+    if (ports == NULL)
+        return;
+    if (!SCConfNodeIsSequence(ports)) {
+        SCLogWarning(
+                "Invalid %s configuration section: expected a list of port numbers.", conf_key);
+        return;
+    }
+    SCConfNode *port_node;
+    TAILQ_FOREACH (port_node, &ports->head, next) {
+        if (port_node->val == NULL)
+            continue;
+        uint16_t port;
+        if (StringParseUint16(&port, 10, 0, port_node->val) < 0 || port == 0) {
+            SCLogWarning("Invalid port '%s' in %s: expected a value in [1, 65535].", port_node->val,
+                    conf_key);
+            continue;
+        }
+        grant(ruleset, port);
+    }
 }
 
 void LandlockSandboxing(SCInstance *suri)
@@ -375,6 +401,11 @@ void LandlockSandboxing(SCInstance *suri)
             }
         }
     }
+
+    LandlockSandboxingApplyNetPorts(
+            ruleset, "security.landlock.network.connect.tcp", SCLandlockGrantNetConnectTCP);
+    LandlockSandboxingApplyNetPorts(
+            ruleset, "security.landlock.network.bind.tcp", SCLandlockGrantNetBindTCP);
 
     /* Let plugins declare their landlock needs. */
 #ifdef HAVE_PLUGINS
