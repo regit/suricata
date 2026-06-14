@@ -3149,6 +3149,8 @@ void SuricataInit(void)
         exit(EXIT_FAILURE);
     }
 
+    LandlockSandboxing(&suricata);
+
     SCDropMainThreadCaps(suricata.userid, suricata.groupid);
 
     /* Re-enable coredumps after privileges are dropped. */
@@ -3161,8 +3163,6 @@ void SuricataInit(void)
     PreRunPostPrivsDropInit(suricata.run_mode);
 
     SCOnLoggingReady();
-
-    LandlockSandboxing(&suricata);
 
     PostConfLoadedDetectSetup(&suricata);
     if (suricata.run_mode == RUNMODE_ENGINE_ANALYSIS) {
