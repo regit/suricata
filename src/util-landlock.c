@@ -317,6 +317,44 @@ static void LandlockSandboxingApplyNetPorts(
     }
 }
 
+/** \brief Grant read access on system pseudo-filesystem paths.
+ *
+ *  Paths that glibc, jemalloc and Rust stdlib probe during normal startup and
+ *  runtime. Granting read here avoids spurious EACCES (and audit noise) without
+ *  measurably widening the sandbox: every Linux process can already read these.
+ *  Paths are granted as-is when they exist; missing paths are silently skipped.
+ *
+ *  \param ruleset the landlock ruleset to add the read rules to
+ */
+static void LandlockGrantSystemReadPaths(struct landlock_ruleset *ruleset)
+{
+    static const char *const system_read_paths[] = {
+        "/sys/devices/system/cpu",        /* sysconf(_SC_NPROCESSORS_*) */
+        "/proc/stat",                     /* CPU/system statistics */
+        "/proc/sys/vm/overcommit_memory", /* malloc tuning */
+        "/dev/urandom",                   /* RNG seeding fallback */
+    };
+
+    for (size_t i = 0; i < sizeof(system_read_paths) / sizeof(system_read_paths[0]); i++) {
+        const char *path = system_read_paths[i];
+        /* Open directly instead of stat()+open() to avoid a TOCTOU race: a
+         * missing or unreadable path simply fails here and is skipped. */
+        int path_fd = open(path, O_PATH | O_CLOEXEC);
+        if (path_fd == -1) {
+            SCLogDebug("Can't open %s for landlock: %s", path, strerror(errno));
+            continue;
+        }
+        struct landlock_path_beneath_attr path_beneath = {
+            .allowed_access = LANDLOCK_ACCESS_FS_READ_FILE & ruleset->attr.handled_access_fs,
+            .parent_fd = path_fd,
+        };
+        if (landlock_add_rule(ruleset->fd, LANDLOCK_RULE_PATH_BENEATH, &path_beneath, 0)) {
+            SCLogDebug("Can't add system read rule for %s: %s", path, strerror(errno));
+        }
+        close(path_fd);
+    }
+}
+
 void LandlockSandboxing(SCInstance *suri)
 {
     /* Read configuration variable and exit if no enforcement */
@@ -333,6 +371,8 @@ void LandlockSandboxing(SCInstance *suri)
         SCLogError("Kernel does not support Landlock");
         return;
     }
+
+    LandlockGrantSystemReadPaths(ruleset);
 
     SCLandlockGrantWritePath(ruleset, SCConfigGetLogDirectory());
     struct stat sb;
