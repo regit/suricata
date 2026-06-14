@@ -44,6 +44,14 @@ their own. Plugins can do the same by implementing the ``LandlockEnable``
 callback on ``SCPlugin`` (see :ref:`libsuricata`). The lists above only need to
 contain directories that are not covered by these declarations.
 
+A handful of system pseudo-files are also granted read access automatically:
+``/sys/devices/system/cpu`` (online-CPU detection via ``sysconf``), ``/proc/stat``,
+``/proc/sys/vm/overcommit_memory`` (allocator tuning) and ``/dev/urandom`` (RNG
+seeding fallback). These are probed by glibc, the system allocator and the Rust
+standard library during normal startup; granting them avoids spurious ``EACCES``
+errors and Landlock audit noise without meaningfully widening the sandbox.
+Missing paths are silently skipped.
+
 Granting access to network ports
 --------------------------------
 
