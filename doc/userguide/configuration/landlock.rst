@@ -25,6 +25,7 @@ To enable Landlock, edit the YAML and set ``enabled`` to ``yes``:
 
   landlock:
     enabled: yes
+    plugin-setup: false
     directories:
       write:
         - /var/log/suricata/
@@ -42,7 +43,9 @@ Built-in outputs (``pcap-log``, ``eve-log`` with ``redis``, ``unix_*`` and custo
 ``filename`` paths, ...) declare the filesystem and network access they need on
 their own. Plugins can do the same by implementing the ``LandlockEnable``
 callback on ``SCPlugin`` (see :ref:`libsuricata`). The lists above only need to
-contain directories that are not covered by these declarations.
+contain directories that are not covered by these declarations. If ever letting
+the plugin set up landlock is not wanted, one can set the `plugin-setup` option
+to `false`.
 
 A handful of system pseudo-files are also granted read access automatically:
 ``/sys/devices/system/cpu`` (online-CPU detection via ``sysconf``), ``/proc/stat``,
