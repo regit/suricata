@@ -485,6 +485,8 @@ void LandlockSandboxing(SCInstance *suri)
 
     LandlockEnforceRuleset(ruleset);
     SCFree(ruleset);
+
+    SCLogInfo("Sandboxing via landlock is active");
 }
 
 #endif /* HAVE_LINUX_LANDLOCK_H */
