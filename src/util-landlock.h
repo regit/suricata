@@ -26,26 +26,21 @@
 
 #include "suricata.h"
 
-/** Opaque landlock ruleset handle passed to plugin/module LandlockEnable
- *  callbacks. Modules must not access the struct directly; use the grant
- *  helpers below. */
-struct landlock_ruleset;
-
 /** Callback signature for plugins, output modules and EVE filetypes that
  *  need to declare additional landlock permissions before the sandbox is
  *  enforced. Implementations must only use the SCLandlockGrant* helpers. */
-typedef void (*SCLandlockEnableFunc)(struct landlock_ruleset *ruleset);
+typedef void (*SCLandlockEnableFunc)(void *ruleset);
 
-void SCLandlockGrantReadPath(struct landlock_ruleset *ruleset, const char *path);
-void SCLandlockGrantWritePath(struct landlock_ruleset *ruleset, const char *path);
+void SCLandlockGrantReadPath(void *ruleset, const char *path);
+void SCLandlockGrantWritePath(void *ruleset, const char *path);
 
 /** Grant TCP bind permission on the given port. Silently no-op when running
  *  on a kernel where landlock network support is not available. */
-void SCLandlockGrantNetBindTCP(struct landlock_ruleset *ruleset, uint16_t port);
+void SCLandlockGrantNetBindTCP(void *ruleset, uint16_t port);
 
 /** Grant TCP connect permission on the given port. Silently no-op when
  *  running on a kernel where landlock network support is not available. */
-void SCLandlockGrantNetConnectTCP(struct landlock_ruleset *ruleset, uint16_t port);
+void SCLandlockGrantNetConnectTCP(void *ruleset, uint16_t port);
 
 void LandlockSandboxing(SCInstance *suri);
 

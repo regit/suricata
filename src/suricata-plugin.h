@@ -24,10 +24,6 @@
 #include "queue.h"
 #include "autoconf.h"
 
-/* Forward declaration so plugins can declare a LandlockEnable callback
- * without pulling in util-landlock.h. */
-struct landlock_ruleset;
-
 /**
  * The size of the data chunk inside each packet structure a plugin
  * has for private data (Packet->plugin_v).
@@ -54,7 +50,7 @@ typedef struct SCPlugin_ {
     /** Optional callback invoked before landlock sandboxing is enforced.
      *  The plugin may grant additional filesystem/network access using the
      *  SCLandlockGrant* helpers in util-landlock.h. May be NULL. */
-    void (*LandlockEnable)(struct landlock_ruleset *ruleset);
+    void (*LandlockEnable)(void *ruleset);
 } SCPlugin;
 
 typedef SCPlugin *(*SCPluginRegisterFunc)(void);

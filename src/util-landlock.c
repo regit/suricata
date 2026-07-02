@@ -40,19 +40,19 @@ void LandlockSandboxing(SCInstance *suri)
 {
 }
 
-void SCLandlockGrantReadPath(struct landlock_ruleset *ruleset, const char *path)
+void SCLandlockGrantReadPath(void *ruleset, const char *path)
 {
 }
 
-void SCLandlockGrantWritePath(struct landlock_ruleset *ruleset, const char *path)
+void SCLandlockGrantWritePath(void *ruleset, const char *path)
 {
 }
 
-void SCLandlockGrantNetBindTCP(struct landlock_ruleset *ruleset, uint16_t port)
+void SCLandlockGrantNetBindTCP(void *ruleset, uint16_t port)
 {
 }
 
-void SCLandlockGrantNetConnectTCP(struct landlock_ruleset *ruleset, uint16_t port)
+void SCLandlockGrantNetConnectTCP(void *ruleset, uint16_t port)
 {
 }
 
@@ -211,8 +211,9 @@ static int LandlockSandboxingAddRule(
     return 0;
 }
 
-void SCLandlockGrantWritePath(struct landlock_ruleset *ruleset, const char *directory)
+void SCLandlockGrantWritePath(void *vruleset, const char *directory)
 {
+    struct landlock_ruleset *ruleset = vruleset;
     if (ruleset == NULL || directory == NULL)
         return;
     if (LandlockSandboxingAddRule(ruleset, directory, _LANDLOCK_SURI_ACCESS_FS_WRITE) == 0) {
@@ -220,8 +221,9 @@ void SCLandlockGrantWritePath(struct landlock_ruleset *ruleset, const char *dire
     }
 }
 
-void SCLandlockGrantReadPath(struct landlock_ruleset *ruleset, const char *directory)
+void SCLandlockGrantReadPath(void *vruleset, const char *directory)
 {
+    struct landlock_ruleset *ruleset = vruleset;
     if (ruleset == NULL || directory == NULL)
         return;
     if (LandlockSandboxingAddRule(ruleset, directory, _LANDLOCK_ACCESS_FS_READ) == 0) {
@@ -249,28 +251,28 @@ static void LandlockGrantNetPort(
     SCLogConfig("Added net %s permission on port %u", access_name, port);
 }
 
-void SCLandlockGrantNetBindTCP(struct landlock_ruleset *ruleset, uint16_t port)
+void SCLandlockGrantNetBindTCP(void *vruleset, uint16_t port)
 {
 #ifdef LANDLOCK_ACCESS_NET_BIND_TCP
-    LandlockGrantNetPort(ruleset, port, LANDLOCK_ACCESS_NET_BIND_TCP, "bind-tcp");
+    LandlockGrantNetPort((struct landlock_ruleset *)vruleset, port, LANDLOCK_ACCESS_NET_BIND_TCP, "bind-tcp");
 #else
-    (void)ruleset;
+    (void)vruleset;
     (void)port;
 #endif
 }
 
-void SCLandlockGrantNetConnectTCP(struct landlock_ruleset *ruleset, uint16_t port)
+void SCLandlockGrantNetConnectTCP(void *vruleset, uint16_t port)
 {
 #ifdef LANDLOCK_ACCESS_NET_CONNECT_TCP
-    LandlockGrantNetPort(ruleset, port, LANDLOCK_ACCESS_NET_CONNECT_TCP, "connect-tcp");
+    LandlockGrantNetPort((struct landlock_ruleset *)vruleset, port, LANDLOCK_ACCESS_NET_CONNECT_TCP, "connect-tcp");
 #else
-    (void)ruleset;
+    (void)vruleset;
     (void)port;
 #endif
 }
 
 static void LandlockSandboxingApplyNetPorts(struct landlock_ruleset *ruleset, const char *conf_key,
-        void (*grant)(struct landlock_ruleset *, uint16_t))
+        void (*grant)(void *, uint16_t))
 {
     SCConfNode *ports = SCConfGetNode(conf_key);
     if (ports == NULL)
