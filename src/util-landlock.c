@@ -237,7 +237,7 @@ static void LandlockGrantNetPort(
     if (ruleset == NULL)
         return;
     if ((ruleset->attr.handled_access_net & access) == 0) {
-        SCLogDebug("Landlock network access %s not available; skipping port %u", access_name, port);
+        SCLogInfo("Landlock network access %s not available; skipping port %u", access_name, port);
         return;
     }
     struct landlock_net_port_attr net_port = {
