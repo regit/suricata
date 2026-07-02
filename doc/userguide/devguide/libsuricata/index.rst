@@ -70,7 +70,7 @@ requirements through the optional ``LandlockEnable`` callback on
 
    #include "util-landlock.h"
 
-   static void MyPluginLandlockEnable(struct landlock_ruleset *ruleset)
+   static void MyPluginLandlockEnable(void *ruleset)
    {
        SCLandlockGrantReadPath(ruleset, "/etc/my-plugin/");
        SCLandlockGrantWritePath(ruleset, "/var/lib/my-plugin/");
