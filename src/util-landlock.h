@@ -51,6 +51,14 @@ void SCLandlockForEachOutput(void *ruleset, const char *name, SCLandlockOutputFu
 void SCLandlockGrantReadPath(void *ruleset, const char *path);
 void SCLandlockGrantWritePath(void *ruleset, const char *path);
 
+/** Same as SCLandlockGrantWritePath but also grants
+ *  LANDLOCK_ACCESS_FS_REFER on the directory, enabling rename() between
+ *  subdirectories rooted at this path. Intended for modules such as
+ *  file-store that need to move files from a staging directory into the
+ *  final tree. Should be used only on directories fully owned by the
+ *  caller. */
+void SCLandlockGrantWriteReferPath(void *ruleset, const char *path);
+
 /** Per-file access flags for SCLandlockGrantFile(). Combine as needed. */
 #define SC_LANDLOCK_FILE_READ     (1U << 0)
 #define SC_LANDLOCK_FILE_WRITE    (1U << 1)
