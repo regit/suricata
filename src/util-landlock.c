@@ -130,6 +130,10 @@ void SCLandlockGrantWritePath(void *ruleset, const char *path)
 {
 }
 
+void SCLandlockGrantWriteReferPath(void *ruleset, const char *path)
+{
+}
+
 void SCLandlockGrantWriteRemovePath(void *ruleset, const char *path)
 {
 }
@@ -322,6 +326,29 @@ void SCLandlockGrantWritePath(void *vruleset, const char *directory)
         return;
     if (LandlockSandboxingAddRule(ruleset, directory, _LANDLOCK_SURI_ACCESS_FS_WRITE) == 0) {
         SCLogConfig("Added write permission to '%s'", directory);
+    }
+}
+
+/**
+ * \brief Grant write access on a directory, plus rename and file removal
+ *
+ * Same as SCLandlockGrantWritePath() but also grants
+ * LANDLOCK_ACCESS_FS_REFER, allowing rename() between subdirectories rooted
+ * at \a directory, and LANDLOCK_ACCESS_FS_REMOVE_FILE. It should only be used
+ * on a directory fully owned by the caller.
+ *
+ * \param vruleset opaque landlock ruleset
+ * \param directory directory to grant the access on
+ */
+void SCLandlockGrantWriteReferPath(void *vruleset, const char *directory)
+{
+    struct landlock_ruleset *ruleset = vruleset;
+    if (ruleset == NULL || directory == NULL)
+        return;
+    uint64_t access = _LANDLOCK_SURI_ACCESS_FS_WRITE | LANDLOCK_ACCESS_FS_REFER |
+                      LANDLOCK_ACCESS_FS_REMOVE_FILE;
+    if (LandlockSandboxingAddRule(ruleset, directory, access) == 0) {
+        SCLogConfig("Added write+refer permission to '%s'", directory);
     }
 }
 

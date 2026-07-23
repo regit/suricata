@@ -36,6 +36,7 @@ void SCLandlockForEachOutput(void *ruleset, const char *name, SCLandlockOutputFu
 void SCLandlockGrantReadPath(void *ruleset, const char *path);
 void SCLandlockGrantWritePath(void *ruleset, const char *path);
 
+void SCLandlockGrantWriteReferPath(void *ruleset, const char *path);
 void SCLandlockGrantWriteRemovePath(void *ruleset, const char *path);
 
 /** Per-file access flags for SCLandlockGrantFile(). Combine as needed. */
