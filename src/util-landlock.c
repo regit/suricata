@@ -68,10 +68,64 @@ void SCLandlockForEachOutput(void *ruleset, const char *name, SCLandlockOutputFu
     }
 }
 
+/* Registry of pending per-file grants populated during configuration
+ * parsing. Consumed by LandlockSandboxing() before enforcement (see the
+ * HAVE_LINUX_LANDLOCK_H branch below). Kept out of the LSM-specific block
+ * so callers can register unconditionally. */
+typedef struct SCLandlockPendingFile_ {
+    char *path;
+    uint32_t access;
+    TAILQ_ENTRY(SCLandlockPendingFile_) next;
+} SCLandlockPendingFile;
+
+static TAILQ_HEAD(, SCLandlockPendingFile_) sc_landlock_pending_files = TAILQ_HEAD_INITIALIZER(
+        sc_landlock_pending_files);
+
+/**
+ * \brief Register a per-file landlock grant to be applied at sandbox setup
+ *
+ * Intended for callers that resolve their file paths at configuration-parse
+ * time, before the landlock ruleset exists. The pending entry is consumed by
+ * LandlockSandboxing(), which calls SCLandlockGrantFile() for each
+ * registration. Safe to call regardless of whether landlock is enabled at
+ * runtime: unused registrations are freed at the end of LandlockSandboxing().
+ *
+ * \param path path of the file, duplicated internally
+ * \param access bit field of SC_LANDLOCK_FILE_* access flags
+ */
+void SCLandlockRegisterFile(const char *path, uint32_t access)
+{
+    if (path == NULL || access == 0)
+        return;
+    SCLandlockPendingFile *e = SCCalloc(1, sizeof(*e));
+    if (e == NULL)
+        return;
+    e->path = SCStrdup(path);
+    if (e->path == NULL) {
+        SCFree(e);
+        return;
+    }
+    e->access = access;
+    TAILQ_INSERT_TAIL(&sc_landlock_pending_files, e, next);
+}
+
+static void SCLandlockPendingFilesFree(void)
+{
+    SCLandlockPendingFile *e, *tmp;
+    TAILQ_FOREACH_SAFE (e, &sc_landlock_pending_files, next, tmp) {
+        TAILQ_REMOVE(&sc_landlock_pending_files, e, next);
+        SCFree(e->path);
+        SCFree(e);
+    }
+}
+
 #ifndef HAVE_LINUX_LANDLOCK_H
 
 void LandlockSandboxing(SCInstance *suri)
 {
+    /* Drop any pending file registrations even when the sandbox is not
+     * built in, so callers do not leak. */
+    SCLandlockPendingFilesFree();
 }
 
 void SCLandlockGrantReadPath(void *ruleset, const char *path)
@@ -79,6 +133,10 @@ void SCLandlockGrantReadPath(void *ruleset, const char *path)
 }
 
 void SCLandlockGrantWritePath(void *ruleset, const char *path)
+{
+}
+
+void SCLandlockGrantFile(void *ruleset, const char *path, uint32_t access)
 {
 }
 
@@ -270,6 +328,70 @@ void SCLandlockGrantReadPath(void *vruleset, const char *directory)
     if (LandlockSandboxingAddRule(ruleset, directory, _LANDLOCK_ACCESS_FS_READ) == 0) {
         SCLogConfig("Added read permission to '%s'", directory);
     }
+}
+
+/**
+ * \brief Grant a minimal per-file landlock rule (read/write/truncate)
+ *
+ * The target file is created (0644, O_NOFOLLOW) if missing when a write flag
+ * is requested, so landlock can attach the rule to a real inode. Intended for
+ * use from plugins, output modules and core subsystems that need per-file
+ * access -- notably truncate-on-open (mode "w") on a single file without
+ * opening truncate up on the whole parent directory. No-op when landlock is
+ * not compiled in or the running kernel does not support it.
+ *
+ * \param vruleset opaque landlock ruleset
+ * \param path path of the file to grant the access on
+ * \param access bit field of SC_LANDLOCK_FILE_* access flags
+ */
+void SCLandlockGrantFile(void *vruleset, const char *path, uint32_t access)
+{
+    struct landlock_ruleset *ruleset = vruleset;
+    if (ruleset == NULL || path == NULL || access == 0)
+        return;
+
+    uint64_t permission = 0;
+    if (access & SC_LANDLOCK_FILE_READ)
+        permission |= LANDLOCK_ACCESS_FS_READ_FILE;
+    if (access & SC_LANDLOCK_FILE_WRITE)
+        permission |= LANDLOCK_ACCESS_FS_WRITE_FILE;
+    if (access & SC_LANDLOCK_FILE_TRUNCATE)
+        permission |= LANDLOCK_ACCESS_FS_TRUNCATE;
+
+    permission &= ruleset->attr.handled_access_fs;
+    if (permission == 0) {
+        SCLogInfo("Landlock: no supported access bits for file '%s'; skipping", path);
+        return;
+    }
+
+    int open_flags = O_PATH | O_CLOEXEC | O_NOFOLLOW;
+    int need_create = (access & (SC_LANDLOCK_FILE_WRITE | SC_LANDLOCK_FILE_TRUNCATE)) != 0;
+    if (need_create) {
+        int cfd = open(path, O_WRONLY | O_CREAT | O_NOFOLLOW | O_CLOEXEC, 0644);
+        if (cfd == -1) {
+            SCLogWarning("Can't create '%s' for landlock rule: %s", path, strerror(errno));
+            return;
+        }
+        close(cfd);
+    }
+
+    int fd = open(path, open_flags);
+    if (fd == -1) {
+        SCLogWarning("Can't open '%s' for landlock rule: %s", path, strerror(errno));
+        return;
+    }
+
+    struct landlock_path_beneath_attr path_beneath = {
+        .allowed_access = permission,
+        .parent_fd = fd,
+    };
+    if (landlock_add_rule(ruleset->fd, LANDLOCK_RULE_PATH_BENEATH, &path_beneath, 0)) {
+        SCLogWarning("Can't add file rule for '%s': %s", path, strerror(errno));
+        close(fd);
+        return;
+    }
+    close(fd);
+    SCLogConfig("Added file permission (0x%x) on '%s'", access, path);
 }
 
 static void LandlockGrantNetPort(
@@ -511,6 +633,14 @@ void LandlockSandboxing(SCInstance *suri)
     LandlockSandboxingApplyNetPorts(
             ruleset, "security.landlock.network.bind.tcp", SCLandlockGrantNetBindTCP);
 
+    /* Apply per-file grants registered by core subsystems during
+     * configuration parsing (typically SC_LANDLOCK_FILE_TRUNCATE for
+     * profiling outputs with "append: no"). */
+    SCLandlockPendingFile *pending;
+    TAILQ_FOREACH (pending, &sc_landlock_pending_files, next) {
+        SCLandlockGrantFile(ruleset, pending->path, pending->access);
+    }
+
     /* Let plugins declare their landlock needs. */
 #ifdef HAVE_PLUGINS
     int enabled = 1;
@@ -532,6 +662,7 @@ void LandlockSandboxing(SCInstance *suri)
 
     LandlockEnforceRuleset(ruleset);
     SCFree(ruleset);
+    SCLandlockPendingFilesFree();
 
     SCLogInfo("Sandboxing via landlock is active");
 }
