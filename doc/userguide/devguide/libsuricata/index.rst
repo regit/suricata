@@ -167,6 +167,36 @@ from the profiling subsystems (``profiling.rules``,
 whenever ``append: no`` is set, so the same pattern is available to
 plugins that expose equivalent options.
 
+Cross-directory renames
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Starting with Landlock ABI 2 (Linux 5.19), ``rename(2)`` between
+different directories requires ``LANDLOCK_ACCESS_FS_REFER`` on both
+source and destination sides. ``SCLandlockGrantWritePath`` deliberately
+does **not** include this bit, which means a plain write grant does not
+allow moving a file from ``<dir>/tmp`` to ``<dir>/final`` even though
+both paths sit inside the same granted directory. When such a move is
+needed -- as ``file-store`` does when it finalises a staged download --
+use ``SCLandlockGrantWriteReferPath`` instead:
+
+.. code-block:: c
+
+   #include "util-landlock.h"
+
+   static void MyPluginLandlockEnable(void *ruleset)
+   {
+       /* Grants standard write access + FS_REFER, so rename() between
+        * subdirectories rooted at /var/lib/my-plugin/store/ works. */
+       SCLandlockGrantWriteReferPath(ruleset, "/var/lib/my-plugin/store/");
+   }
+
+The grant is limited to renames staying under the given directory:
+moves *out of* it are still refused by the kernel. Use this helper only
+on directories fully owned by the module, and keep unrelated log or
+data directories on the stricter ``SCLandlockGrantWritePath`` grant so
+that a compromised code path cannot pull unrelated files into the
+sandbox tree.
+
 Known limitations are:
 
 - Plugins can only use simple logging as defined by ``EveJsonSimpleTxLogFunc``
