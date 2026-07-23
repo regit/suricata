@@ -26,6 +26,7 @@
 #include "output-json-file.h"
 
 #include "util-conf.h"
+#include "util-landlock.h"
 #include "util-misc.h"
 #include "util-path.h"
 #include "util-print.h"
@@ -534,11 +535,58 @@ static OutputInitResult OutputFilestoreLogInitCtx(SCConfNode *conf)
     SCReturnCT(result, "OutputInitResult");
 }
 
+static void OutputFilestoreLandlockEnable(struct landlock_ruleset *ruleset)
+{
+    /* outputs is a YAML sequence; iterate entries and pick up the
+     * file-store child. */
+    SCConfNode *outputs = SCConfGetNode("outputs");
+    if (outputs == NULL)
+        return;
+
+    SCConfNode *entry;
+    TAILQ_FOREACH (entry, &outputs->head, next) {
+        SCConfNode *fs_conf = SCConfNodeLookupChild(entry, "file-store");
+        if (fs_conf == NULL)
+            continue;
+        const char *enabled = SCConfNodeLookupChildValue(fs_conf, "enabled");
+        if (enabled == NULL || !SCConfValIsTrue(enabled))
+            continue;
+
+        /* Resolve the same directory OutputFilestoreLogInitCtx() will use. */
+        char dir[PATH_MAX];
+        const char *log_base_dir = SCConfNodeLookupChildValue(fs_conf, "dir");
+        if (log_base_dir == NULL)
+            log_base_dir = default_log_dir;
+        if (PathIsAbsolute(log_base_dir)) {
+            strlcpy(dir, log_base_dir, sizeof(dir));
+        } else {
+            if (PathMerge(dir, sizeof(dir), SCConfigGetLogDirectory(), log_base_dir) < 0)
+                continue;
+        }
+        /* The directory is created lazily by OutputFilestoreLogInitCtx()
+         * later, but landlock rules must attach to an existing inode. */
+        if (!SCPathExists(dir)) {
+            if (SCCreateDirectoryTree(dir, true) != 0) {
+                SCLogWarning("Filestore landlock: can't create %s: %s", dir, strerror(errno));
+                continue;
+            }
+        }
+        /* Filestore renames files from <dir>/tmp to <dir>/<hex>/, so we
+         * need FS_REFER in addition to the standard write access. */
+        SCLandlockGrantWriteReferPath(ruleset, dir);
+    }
+}
+
 void OutputFilestoreRegister(void)
 {
     OutputRegisterFiledataModule(LOGGER_FILE_STORE, MODULE_NAME, "file-store",
             OutputFilestoreLogInitCtx, OutputFilestoreLogger, OutputFilestoreLogThreadInit,
             OutputFilestoreLogThreadDeinit);
+
+    OutputModule *module = OutputGetModuleByConfName("file-store");
+    if (module != NULL) {
+        module->LandlockEnable = OutputFilestoreLandlockEnable;
+    }
 
     SC_ATOMIC_INIT(filestore_open_file_cnt);
     SC_ATOMIC_SET(filestore_open_file_cnt, 0);
