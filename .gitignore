@@ -13,6 +13,7 @@
 Makefile
 .deps/
 .libs/
+.cache/
 *~
 m4/
 TAGS
