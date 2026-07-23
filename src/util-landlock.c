@@ -484,6 +484,18 @@ void LandlockSandboxing(SCInstance *suri)
             SCFree(file_name);
         }
     }
+    /* Per-file read grants for classification.config and reference.config.
+     * These paths may live outside any directory Suricata otherwise grants
+     * (e.g. --set classification-file=/some/etc/classification.config),
+     * so a per-file rule keeps the grant minimal. */
+    const char *class_file;
+    if (SCConfGetNonNull("classification-file", &class_file) == 1) {
+        SCLandlockGrantFile(ruleset, class_file, SC_LANDLOCK_FILE_READ);
+    }
+    const char *ref_file;
+    if (SCConfGetNonNull("reference-config-file", &ref_file) == 1) {
+        SCLandlockGrantFile(ruleset, ref_file, SC_LANDLOCK_FILE_READ);
+    }
     if (suri->pid_filename) {
         char *file_name = SCStrdup(suri->pid_filename);
         if (file_name != NULL) {
