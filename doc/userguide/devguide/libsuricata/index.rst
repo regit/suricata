@@ -93,6 +93,80 @@ permissions are required.
 The network grant helpers silently no-op on kernels whose Landlock ABI
 does not support network rules, so callbacks do not need to guard them.
 
+Per-file grants
+^^^^^^^^^^^^^^^
+
+``SCLandlockGrantWritePath`` grants a broad set of write permissions on
+the target directory but deliberately does **not** grant
+``LANDLOCK_ACCESS_FS_TRUNCATE``. Opening an existing file with mode
+``"w"`` (``O_TRUNC``) is therefore denied inside the sandbox. This is
+intentional: it prevents a compromised or misbehaving component from
+truncating unrelated files such as ``eve.json`` sitting in the same log
+directory.
+
+When a plugin does need to truncate a specific file on open (for
+example when its configuration exposes an ``append: no`` option), it
+can request a minimal per-file grant with ``SCLandlockGrantFile``:
+
+.. code-block:: c
+
+   #include "util-landlock.h"
+
+   static void MyPluginLandlockEnable(void *ruleset)
+   {
+       SCLandlockGrantWritePath(ruleset, "/var/log/my-plugin/");
+       /* Allow truncate-on-open only on this specific file. */
+       SCLandlockGrantFile(ruleset, "/var/log/my-plugin/stats.log",
+               SC_LANDLOCK_FILE_WRITE | SC_LANDLOCK_FILE_TRUNCATE);
+   }
+
+The available access flags are:
+
+- ``SC_LANDLOCK_FILE_READ`` — open for reading.
+- ``SC_LANDLOCK_FILE_WRITE`` — open for writing / append.
+- ``SC_LANDLOCK_FILE_TRUNCATE`` — allow ``O_TRUNC`` / ``fopen`` mode
+  ``"w"`` on this file.
+
+The target file is created (mode ``0644``, ``O_NOFOLLOW``) if missing
+when a write flag is requested, so Landlock can attach the rule to a
+real inode. Grants apply only to the exact path passed in; other files
+in the same directory keep the stricter directory-level policy.
+``SCLandlockGrantFile`` is a no-op when Landlock is not compiled in or
+the running kernel does not support it.
+
+Deferred per-file grants
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some code paths -- for example a plugin that resolves its output
+filename during configuration parsing, well before the ``LandlockEnable``
+callback runs -- do not have a ``ruleset`` handle available at the time
+the grant needs to be described. For these cases,
+``SCLandlockRegisterFile`` records the request in a small pending list
+that ``LandlockSandboxing`` drains just before enforcing the sandbox:
+
+.. code-block:: c
+
+   #include "util-landlock.h"
+
+   void MyPluginConfigInit(void)
+   {
+       /* ... parse config, resolve /var/log/my-plugin/stats.log ... */
+       if (append_no_configured) {
+           SCLandlockRegisterFile("/var/log/my-plugin/stats.log",
+                   SC_LANDLOCK_FILE_WRITE | SC_LANDLOCK_FILE_TRUNCATE);
+       }
+   }
+
+The path is duplicated internally, so the caller does not need to keep
+the string alive. Calling ``SCLandlockRegisterFile`` is always safe: if
+Landlock is disabled at runtime the pending entries are simply freed
+when the sandbox setup finishes. Suricata itself uses this entry point
+from the profiling subsystems (``profiling.rules``,
+``profiling.keywords``, ``profiling.prefilter``, ``profiling.rulegroups``,
+``profiling.packets``, ``profiling.locks`` and ``profiling.pcap-log``)
+whenever ``append: no`` is set, so the same pattern is available to
+plugins that expose equivalent options.
+
 Known limitations are:
 
 - Plugins can only use simple logging as defined by ``EveJsonSimpleTxLogFunc``
