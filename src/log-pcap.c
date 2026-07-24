@@ -226,15 +226,28 @@ static void PcapLogLandlockEnable(struct landlock_ruleset *ruleset)
     const char *enabled = SCConfNodeLookupChildValue(conf, "enabled");
     if (enabled == NULL || !SCConfValIsTrue(enabled))
         return;
+    /* Ring-buffer mode (max-files set) recycles the oldest pcap via
+     * remove(), so we need FS_REMOVE_FILE on the pcap directory. Without
+     * max-files there is no rotation and REMOVE stays out. */
+    bool ring_buffer = SCConfNodeLookupChildValue(conf, "max-files") != NULL;
     const char *s_dir = SCConfNodeLookupChildValue(conf, "dir");
-    if (s_dir == NULL)
-        return; /* default dir is the log directory, already granted */
-    if (PathIsAbsolute(s_dir)) {
-        SCLandlockGrantWritePath(ruleset, s_dir);
+    char path[PATH_MAX];
+    const char *target;
+    if (s_dir == NULL) {
+        /* default dir is the log directory, already granted for write */
+        if (!ring_buffer)
+            return;
+        target = SCConfigGetLogDirectory();
+    } else if (PathIsAbsolute(s_dir)) {
+        target = s_dir;
     } else {
-        char path[PATH_MAX];
         snprintf(path, sizeof(path), "%s/%s", SCConfigGetLogDirectory(), s_dir);
-        SCLandlockGrantWritePath(ruleset, path);
+        target = path;
+    }
+    if (ring_buffer) {
+        SCLandlockGrantWriteRemovePath(ruleset, target);
+    } else if (s_dir != NULL) {
+        SCLandlockGrantWritePath(ruleset, target);
     }
 }
 
