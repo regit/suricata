@@ -466,8 +466,17 @@ void LandlockSandboxing(SCInstance *suri)
     SCLandlockGrantWritePath(ruleset, SCConfigGetLogDirectory());
     struct stat sb;
     if (stat(ConfigGetDataDirectory(), &sb) == 0) {
-        LandlockSandboxingAddRule(ruleset, ConfigGetDataDirectory(),
-                _LANDLOCK_SURI_ACCESS_FS_WRITE | _LANDLOCK_ACCESS_FS_READ);
+        uint64_t data_dir_access = _LANDLOCK_SURI_ACCESS_FS_WRITE | _LANDLOCK_ACCESS_FS_READ;
+        /* Datasets rewrite their state file with fopen("w"), which requires
+         * FS_TRUNCATE on the parent directory. Grant it only when datasets
+         * are configured so unrelated deployments don't get truncate on the
+         * data-dir for free. Live rule reload can add new dataset save
+         * files under this directory, so we grant on the whole dir up
+         * front rather than per-file. */
+        if (SCConfGetNode("datasets") != NULL) {
+            data_dir_access |= LANDLOCK_ACCESS_FS_TRUNCATE;
+        }
+        LandlockSandboxingAddRule(ruleset, ConfigGetDataDirectory(), data_dir_access);
     }
     if (DetectEngineMpmCachingEnabled() && stat(DetectEngineMpmCachingGetPath(), &sb) == 0) {
         LandlockSandboxingAddRule(ruleset, DetectEngineMpmCachingGetPath(),
