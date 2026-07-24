@@ -53,11 +53,19 @@ void SCLandlockGrantWritePath(void *ruleset, const char *path);
 
 /** Same as SCLandlockGrantWritePath but also grants
  *  LANDLOCK_ACCESS_FS_REFER on the directory, enabling rename() between
- *  subdirectories rooted at this path. Intended for modules such as
- *  file-store that need to move files from a staging directory into the
- *  final tree. Should be used only on directories fully owned by the
- *  caller. */
+ *  subdirectories rooted at this path. Also grants
+ *  LANDLOCK_ACCESS_FS_REMOVE_FILE so callers can unlink their own staged
+ *  files. Intended for modules such as file-store that need to move files
+ *  from a staging directory into the final tree. Should be used only on
+ *  directories fully owned by the caller. */
 void SCLandlockGrantWriteReferPath(void *ruleset, const char *path);
+
+/** Same as SCLandlockGrantWritePath but also grants
+ *  LANDLOCK_ACCESS_FS_REMOVE_FILE on the directory. Intended for modules
+ *  that legitimately recycle their own files (e.g. pcap-log ring buffer).
+ *  REMOVE is deliberately kept out of the default write grant because it's
+ *  a common anti-forensics primitive -- opt in explicitly. */
+void SCLandlockGrantWriteRemovePath(void *ruleset, const char *path);
 
 /** Per-file access flags for SCLandlockGrantFile(). Combine as needed. */
 #define SC_LANDLOCK_FILE_READ     (1U << 0)
