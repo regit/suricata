@@ -494,6 +494,23 @@ static void LandlockGrantSystemReadPaths(struct landlock_ruleset *ruleset)
     }
 }
 
+/** \brief Grant read access on a rule file given on the command line.
+ *
+ *  Only absolute paths get a rule: a relative one is resolved by
+ *  DetectLoadCompleteSigPathWithKey() against a configured rule path, a
+ *  directory that is granted separately. No-op on a NULL path or when the
+ *  file does not exist -- a missing rule file is an error Suricata reports
+ *  on its own, not something to warn about here.
+ */
+static void LandlockGrantRuleFile(struct landlock_ruleset *ruleset, const char *path)
+{
+    if (path == NULL || !PathIsAbsolute(path))
+        return;
+    if (!SCPathExists(path))
+        return;
+    SCLandlockGrantFile(ruleset, path, SC_LANDLOCK_FILE_READ);
+}
+
 void LandlockSandboxing(SCInstance *suri)
 {
     /* Read configuration variable and exit if no enforcement */
@@ -632,6 +649,12 @@ void LandlockSandboxing(SCInstance *suri)
             SCLandlockGrantReadPath(ruleset, rule_path);
         }
     }
+    /* The firewall rule file (--firewall-rules-exclusive) is loaded from the
+     * path as provided, so an absolute one may sit outside every directory
+     * granted above -- unlike sig_file, whose directory is granted earlier.
+     * Grant it per-file to keep the rule minimal. A relative path is resolved
+     * against firewall.rule-path, already covered by the directory grants. */
+    LandlockGrantRuleFile(ruleset, suri->firewall_rule_file);
 
     SCConfNode *read_dirs = SCConfGetNode("security.landlock.directories.read");
     if (read_dirs) {
