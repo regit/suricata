@@ -218,11 +218,8 @@ static OutputInitResult PcapLogInitCtx(SCConfNode *);
 static void PcapLogProfilingDump(PcapLogData *);
 static bool PcapLogCondition(ThreadVars *, void *, const Packet *);
 
-static void PcapLogLandlockEnable(struct landlock_ruleset *ruleset)
+static void PcapLogLandlockEnableInstance(struct landlock_ruleset *ruleset, SCConfNode *conf)
 {
-    SCConfNode *conf = SCConfGetNode("outputs.pcap-log");
-    if (conf == NULL)
-        return;
     const char *enabled = SCConfNodeLookupChildValue(conf, "enabled");
     if (enabled == NULL || !SCConfValIsTrue(enabled))
         return;
@@ -246,8 +243,30 @@ static void PcapLogLandlockEnable(struct landlock_ruleset *ruleset)
     }
     if (ring_buffer) {
         SCLandlockGrantWriteRemovePath(ruleset, target);
+        /* PcapLogInitRingBuffer() opendir()s the pcap directory to rebuild
+         * the ring from the files already on disk, so READ_DIR is needed on
+         * top of the write grant -- including when the pcap directory is the
+         * log directory, which is otherwise only granted for write. */
+        SCLandlockGrantReadPath(ruleset, target);
     } else if (s_dir != NULL) {
         SCLandlockGrantWritePath(ruleset, target);
+    }
+}
+
+static void PcapLogLandlockEnable(struct landlock_ruleset *ruleset)
+{
+    /* "outputs" is a sequence, so pcap-log lives at outputs.<n>.pcap-log:
+     * looking up "outputs.pcap-log" directly would never match. */
+    SCConfNode *outputs = SCConfGetNode("outputs");
+    if (outputs == NULL)
+        return;
+
+    SCConfNode *output;
+    TAILQ_FOREACH (output, &outputs->head, next) {
+        SCConfNode *conf = SCConfNodeLookupChild(output, "pcap-log");
+        if (conf == NULL)
+            continue;
+        PcapLogLandlockEnableInstance(ruleset, conf);
     }
 }
 
