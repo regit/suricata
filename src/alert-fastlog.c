@@ -53,6 +53,8 @@
 #include "util-optimize.h"
 #include "util-logopenfile.h"
 #include "util-time.h"
+#include "util-landlock.h"
+#include "util-path.h"
 
 #include "action-globals.h"
 
@@ -74,6 +76,51 @@ static void AlertFastLogDeInitCtx(OutputCtx *);
 static bool AlertFastLogCondition(ThreadVars *tv, void *thread_data, const Packet *p);
 int AlertFastLogger(ThreadVars *tv, void *data, const Packet *p);
 
+/** \brief Declare the filesystem access the "fast" output needs.
+ *
+ *  Mirrors the path resolution done by SCConfLogOpenGeneric(): a relative
+ *  filename lands in the log directory, which LandlockSandboxing() has
+ *  already granted, so only absolute paths need a rule here. The grant is
+ *  per-file rather than on the parent directory: "filename: /dev/null" is a
+ *  common way to enable the module while discarding its output, and granting
+ *  write on all of /dev would needlessly widen the sandbox.
+ */
+static void AlertFastLogLandlockEnableInstance(
+        struct landlock_ruleset *ruleset, SCConfNode *fast_conf)
+{
+    const char *enabled = SCConfNodeLookupChildValue(fast_conf, "enabled");
+    if (enabled == NULL || !SCConfValIsTrue(enabled))
+        return;
+
+    const char *filename = SCConfNodeLookupChildValue(fast_conf, "filename");
+    if (filename == NULL)
+        filename = DEFAULT_LOG_FILENAME;
+    if (!PathIsAbsolute(filename))
+        return;
+
+    uint32_t access = SC_LANDLOCK_FILE_WRITE;
+    const char *append = SCConfNodeLookupChildValue(fast_conf, "append");
+    if (append != NULL && !SCConfValIsTrue(append))
+        access |= SC_LANDLOCK_FILE_TRUNCATE;
+
+    SCLandlockGrantFile(ruleset, filename, access);
+}
+
+static void AlertFastLogLandlockEnable(struct landlock_ruleset *ruleset)
+{
+    SCConfNode *outputs = SCConfGetNode("outputs");
+    if (outputs == NULL)
+        return;
+
+    SCConfNode *output;
+    TAILQ_FOREACH (output, &outputs->head, next) {
+        SCConfNode *fast_conf = SCConfNodeLookupChild(output, "fast");
+        if (fast_conf == NULL)
+            continue;
+        AlertFastLogLandlockEnableInstance(ruleset, fast_conf);
+    }
+}
+
 void AlertFastLogRegister(void)
 {
     OutputPacketLoggerFunctions output_logger_functions = {
@@ -86,6 +133,10 @@ void AlertFastLogRegister(void)
 
     OutputRegisterPacketModule(
             LOGGER_ALERT_FAST, MODULE_NAME, "fast", AlertFastLogInitCtx, &output_logger_functions);
+    OutputModule *module = OutputGetModuleByConfName("fast");
+    if (module != NULL) {
+        module->LandlockEnable = AlertFastLogLandlockEnable;
+    }
     AlertFastLogRegisterTests();
 }
 
