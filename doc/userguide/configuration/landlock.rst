@@ -39,9 +39,13 @@ Following your running configuration you may have to add some directories.
 There are two lists you can use, ``write`` to add directories where write is needed
 and ``read`` for directories where read access is needed.
 
-Built-in outputs (``pcap-log``, ``eve-log`` with ``redis``, ``unix_*`` and custom
-``filename`` paths, ...) declare the filesystem and network access they need on
-their own. Plugins can do the same by implementing the ``LandlockEnable``
+Built-in outputs (``pcap-log``, ``fast``, ``eve-log`` with ``redis``, ``unix_*``
+and custom ``filename`` paths, ...) declare the filesystem and network access
+they need on their own. In particular, an absolute ``filename`` on the ``fast``
+output is granted per-file, so the common ``filename: /dev/null`` idiom (enable
+the module but discard its output) works without opening up write access to the
+whole ``/dev`` directory.
+Plugins can do the same by implementing the ``LandlockEnable``
 callback on ``SCPlugin`` (see :ref:`libsuricata`). The lists above only need to
 contain directories that are not covered by these declarations. If ever letting
 the plugin set up landlock is not wanted, one can set the `plugin-setup` option
@@ -54,6 +58,30 @@ seeding fallback). These are probed by glibc, the system allocator and the Rust
 standard library during normal startup; granting them avoids spurious ``EACCES``
 errors and Landlock audit noise without meaningfully widening the sandbox.
 Missing paths are silently skipped.
+
+Lua scripts writing their own files
+-----------------------------------
+
+Suricata cannot know in advance which files a Lua output script will open:
+the path is chosen by the script at runtime, often built from per-flow data
+such as addresses and ports. Such writes are therefore *not* granted
+automatically and will fail with ``Permission denied`` once the sandbox is
+active, for example::
+
+  Info: output-lua: failed to run script: ./streaming-tcp.lua:25:
+  /var/log/suricata/6-10.0.0.1-10.0.0.2-1234-80: Permission denied
+
+When using a Lua script that writes files on its own, add the target
+directory to ``security.landlock.directories.write``::
+
+  landlock:
+    enabled: yes
+    directories:
+      write:
+        - /var/log/suricata/
+
+Scripts that only write through Suricata's own logging facilities do not
+need any extra permission.
 
 Granting access to network ports
 --------------------------------
