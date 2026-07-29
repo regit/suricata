@@ -407,6 +407,14 @@
     enable_landlock="no"
     if test "$ac_cv_header_linux_landlock_h" = "yes"; then
         enable_landlock="yes"
+        # struct landlock_ruleset_attr gained the scoped field in Linux 6.12
+        # (Landlock ABI 6). Missing constants can be defined by hand, a
+        # struct member cannot, so it needs its own check.
+        AC_CHECK_MEMBER([struct landlock_ruleset_attr.scoped],
+            [AC_DEFINE([HAVE_LANDLOCK_RULESET_ATTR_SCOPED], [1],
+                [Set if struct landlock_ruleset_attr has the scoped field])],
+            [],
+            [[#include <linux/landlock.h>]])
     fi
 
     #check for plugin support
