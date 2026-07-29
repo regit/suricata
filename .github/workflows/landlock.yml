@@ -159,6 +159,11 @@ jobs:
       # filemagic keyword then dies with "could not find any valid magic
       # files".
       #
+      # /usr is granted wholesale, the same thing the default suricata.yaml
+      # does, rather than guessing at the magic database location: libmagic
+      # picks its own compiled-in path and distributions disagree about it
+      # (/usr/share/misc, /usr/share/file, /usr/lib/file, ...).
+      #
       # Index 3 is used because --set on a list replaces the entry at that
       # index instead of appending: 0..2 are taken in the default
       # suricata.yaml, and overwriting index 0 would silently drop /usr/.
@@ -166,8 +171,7 @@ jobs:
         run: |
           SV_LANDLOCK=1 python3 ./suricata-verify/run.py -q --debug-failed \
               --set security.landlock.enabled=yes \
-              --set security.landlock.directories.read.3=/usr/share/misc \
-              --set security.landlock.directories.read.4=/usr/share/file
+              --set security.landlock.directories.read.3=/usr
 
       # A run without the sandbox, to make sure a failure above is attributable
       # to Landlock rather than to something unrelated.
