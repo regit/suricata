@@ -50,6 +50,15 @@ void SCLandlockGrantWriteReferPath(void *ruleset, const char *path);
  *  a common anti-forensics primitive -- opt in explicitly. */
 void SCLandlockGrantWriteRemovePath(void *ruleset, const char *path);
 
+/** Grants read and write access plus LANDLOCK_ACCESS_FS_TRUNCATE on the
+ *  directory. Backs the ``security.landlock.directories.rewrite`` YAML list,
+ *  for state files that are rewritten in place with fopen(..., "w") --
+ *  typically dataset ``save``/``state`` files living outside the data
+ *  directory. TRUNCATE is kept out of the default write grant because
+ *  zeroing a file is an anti-forensics primitive, so it has to be opted
+ *  into for a specific directory. */
+void SCLandlockGrantRewritePath(void *ruleset, const char *path);
+
 /** Per-file access flags for SCLandlockGrantFile(). Combine as needed. */
 #define SC_LANDLOCK_FILE_READ     (1U << 0)
 #define SC_LANDLOCK_FILE_WRITE    (1U << 1)
