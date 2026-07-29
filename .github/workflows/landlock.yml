@@ -134,14 +134,18 @@ jobs:
       # Confirm the sandbox actually engages before relying on the suite: a
       # kernel or build without Landlock only logs an error and keeps running,
       # so a green suite would otherwise prove nothing.
+      # Suricata's exit code is deliberately ignored: run from the build tree
+      # it also complains about the not-yet-installed sysconfdir and rule
+      # directory. Only the sandbox message matters here, the suite below is
+      # what checks Suricata actually behaves.
       - name: Check the sandbox is enforced
         run: |
           mkdir -p landlock-check
-          ./src/suricata -l landlock-check \
+          ./src/suricata -c suricata.yaml -l landlock-check \
               --set security.landlock.enabled=yes \
               --set logging.default-log-level=info \
               -r suricata-verify/tests/datasets/datasets-parent-path/one-packet.pcap \
-              > landlock-check/run.log 2>&1
+              > landlock-check/run.log 2>&1 || true
           cat landlock-check/run.log
           grep -q "Sandboxing via landlock is active" landlock-check/run.log
 
