@@ -144,6 +144,10 @@ void SCLandlockGrantWriteRemovePath(void *ruleset, const char *path)
 {
 }
 
+void SCLandlockGrantRewritePath(void *ruleset, const char *path)
+{
+}
+
 void SCLandlockGrantFile(void *ruleset, const char *path, uint32_t access)
 {
 }
@@ -393,6 +397,31 @@ void SCLandlockGrantReadPath(void *vruleset, const char *directory)
         return;
     if (LandlockSandboxingAddRule(ruleset, directory, _LANDLOCK_ACCESS_FS_READ) == 0) {
         SCLogConfig("Added read permission to '%s'", directory);
+    }
+}
+
+/**
+ * \brief Grant read and write access on a directory, plus truncation
+ *
+ * Backs the ``security.landlock.directories.rewrite`` YAML list, for state
+ * files that are rewritten in place with fopen(..., "w") -- typically dataset
+ * ``save``/``state`` files living outside the data directory. TRUNCATE is
+ * kept out of the default write grant because zeroing a file is an
+ * anti-forensics primitive, so it has to be opted into for a specific
+ * directory the caller owns.
+ *
+ * \param vruleset opaque landlock ruleset
+ * \param directory directory to grant the access on
+ */
+void SCLandlockGrantRewritePath(void *vruleset, const char *directory)
+{
+    struct landlock_ruleset *ruleset = vruleset;
+    if (ruleset == NULL || directory == NULL)
+        return;
+    uint64_t access =
+            _LANDLOCK_ACCESS_FS_READ | _LANDLOCK_SURI_ACCESS_FS_WRITE | LANDLOCK_ACCESS_FS_TRUNCATE;
+    if (LandlockSandboxingAddRule(ruleset, directory, access) == 0) {
+        SCLogConfig("Added read+write+truncate permission to '%s'", directory);
     }
 }
 
@@ -796,6 +825,18 @@ void LandlockSandboxing(SCInstance *suri)
             SCConfNode *directory;
             TAILQ_FOREACH (directory, &write_dirs->head, next) {
                 SCLandlockGrantWritePath(ruleset, directory->val);
+            }
+        }
+    }
+    SCConfNode *rewrite_dirs = SCConfGetNode("security.landlock.directories.rewrite");
+    if (rewrite_dirs) {
+        if (!SCConfNodeIsSequence(rewrite_dirs)) {
+            SCLogWarning("Invalid security.landlock.directories.rewrite configuration section: "
+                         "expected a list of directory names.");
+        } else {
+            SCConfNode *directory;
+            TAILQ_FOREACH (directory, &rewrite_dirs->head, next) {
+                SCLandlockGrantRewritePath(ruleset, directory->val);
             }
         }
     }
