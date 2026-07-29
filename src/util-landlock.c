@@ -44,8 +44,8 @@ typedef struct SCLandlockPendingFile_ {
     TAILQ_ENTRY(SCLandlockPendingFile_) next;
 } SCLandlockPendingFile;
 
-static TAILQ_HEAD(, SCLandlockPendingFile_) sc_landlock_pending_files =
-        TAILQ_HEAD_INITIALIZER(sc_landlock_pending_files);
+static TAILQ_HEAD(, SCLandlockPendingFile_) sc_landlock_pending_files = TAILQ_HEAD_INITIALIZER(
+        sc_landlock_pending_files);
 
 void SCLandlockForEachOutput(void *ruleset, const char *name, SCLandlockOutputFunc cb)
 {
