@@ -457,7 +457,8 @@ static void LandlockGrantNetPort(
 void SCLandlockGrantNetBindTCP(void *vruleset, uint16_t port)
 {
 #ifdef LANDLOCK_ACCESS_NET_BIND_TCP
-    LandlockGrantNetPort((struct landlock_ruleset *)vruleset, port, LANDLOCK_ACCESS_NET_BIND_TCP, "bind-tcp");
+    LandlockGrantNetPort(
+            (struct landlock_ruleset *)vruleset, port, LANDLOCK_ACCESS_NET_BIND_TCP, "bind-tcp");
 #else
     (void)vruleset;
     (void)port;
@@ -467,15 +468,16 @@ void SCLandlockGrantNetBindTCP(void *vruleset, uint16_t port)
 void SCLandlockGrantNetConnectTCP(void *vruleset, uint16_t port)
 {
 #ifdef LANDLOCK_ACCESS_NET_CONNECT_TCP
-    LandlockGrantNetPort((struct landlock_ruleset *)vruleset, port, LANDLOCK_ACCESS_NET_CONNECT_TCP, "connect-tcp");
+    LandlockGrantNetPort((struct landlock_ruleset *)vruleset, port, LANDLOCK_ACCESS_NET_CONNECT_TCP,
+            "connect-tcp");
 #else
     (void)vruleset;
     (void)port;
 #endif
 }
 
-static void LandlockSandboxingApplyNetPorts(void *v_ruleset, const char *conf_key,
-        void (*grant)(void *, uint16_t))
+static void LandlockSandboxingApplyNetPorts(
+        void *v_ruleset, const char *conf_key, void (*grant)(void *, uint16_t))
 {
     struct landlock_ruleset *ruleset = v_ruleset;
     SCConfNode *ports = SCConfGetNode(conf_key);
@@ -612,8 +614,7 @@ void LandlockSandboxing(SCInstance *suri)
             if (file_name != NULL) {
                 struct stat statbuf;
                 if (stat(file_name, &statbuf) != -1) {
-                    const char *dir =
-                            S_ISDIR(statbuf.st_mode) ? file_name : dirname(file_name);
+                    const char *dir = S_ISDIR(statbuf.st_mode) ? file_name : dirname(file_name);
                     if (delete_when_done) {
                         LandlockSandboxingAddRule(ruleset, dir,
                                 _LANDLOCK_ACCESS_FS_READ | LANDLOCK_ACCESS_FS_REMOVE_FILE);
