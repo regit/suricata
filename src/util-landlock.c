@@ -47,6 +47,24 @@ typedef struct SCLandlockPendingFile_ {
 static TAILQ_HEAD(, SCLandlockPendingFile_) sc_landlock_pending_files =
         TAILQ_HEAD_INITIALIZER(sc_landlock_pending_files);
 
+void SCLandlockForEachOutput(void *ruleset, const char *name, SCLandlockOutputFunc cb)
+{
+    if (name == NULL || cb == NULL)
+        return;
+
+    SCConfNode *outputs = SCConfGetNode("outputs");
+    if (outputs == NULL)
+        return;
+
+    SCConfNode *conf = NULL;
+    while ((conf = SCConfNodeLookupInSequence(outputs, name, conf)) != NULL) {
+        const char *enabled = SCConfNodeLookupChildValue(conf, "enabled");
+        if (enabled == NULL || !SCConfValIsTrue(enabled))
+            continue;
+        cb(ruleset, conf);
+    }
+}
+
 void SCLandlockRegisterFile(const char *path, uint32_t access)
 {
     if (path == NULL || access == 0)

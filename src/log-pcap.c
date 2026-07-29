@@ -218,11 +218,8 @@ static OutputInitResult PcapLogInitCtx(SCConfNode *);
 static void PcapLogProfilingDump(PcapLogData *);
 static bool PcapLogCondition(ThreadVars *, void *, const Packet *);
 
-static void PcapLogLandlockEnableInstance(struct landlock_ruleset *ruleset, SCConfNode *conf)
+static void PcapLogLandlockEnableInstance(void *ruleset, SCConfNode *conf)
 {
-    const char *enabled = SCConfNodeLookupChildValue(conf, "enabled");
-    if (enabled == NULL || !SCConfValIsTrue(enabled))
-        return;
     /* Ring-buffer mode (max-files set) recycles the oldest pcap via
      * remove(), so we need FS_REMOVE_FILE on the pcap directory. Without
      * max-files there is no rotation and REMOVE stays out. */
@@ -255,19 +252,7 @@ static void PcapLogLandlockEnableInstance(struct landlock_ruleset *ruleset, SCCo
 
 static void PcapLogLandlockEnable(struct landlock_ruleset *ruleset)
 {
-    /* "outputs" is a sequence, so pcap-log lives at outputs.<n>.pcap-log:
-     * looking up "outputs.pcap-log" directly would never match. */
-    SCConfNode *outputs = SCConfGetNode("outputs");
-    if (outputs == NULL)
-        return;
-
-    SCConfNode *output;
-    TAILQ_FOREACH (output, &outputs->head, next) {
-        SCConfNode *conf = SCConfNodeLookupChild(output, "pcap-log");
-        if (conf == NULL)
-            continue;
-        PcapLogLandlockEnableInstance(ruleset, conf);
-    }
+    SCLandlockForEachOutput(ruleset, "pcap-log", PcapLogLandlockEnableInstance);
 }
 
 void PcapLogRegister(void)

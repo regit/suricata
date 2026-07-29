@@ -31,6 +31,23 @@
  *  enforced. Implementations must only use the SCLandlockGrant* helpers. */
 typedef void (*SCLandlockEnableFunc)(void *ruleset);
 
+/** Callback invoked by SCLandlockForEachOutput() for one output instance.
+ *  \a conf is the node named after the output (e.g. the "eve-log" node), not
+ *  the enclosing sequence entry. */
+typedef void (*SCLandlockOutputFunc)(void *ruleset, SCConfNode *conf);
+
+/** Run \a cb for every enabled instance of the \a name output.
+ *
+ *  "outputs" is a YAML sequence, so an output lives at outputs.<n>.<name>
+ *  and a direct SCConfGetNode("outputs.<name>") never matches -- a mistake
+ *  that silently disables a module's whole landlock declaration. Every
+ *  LandlockEnable implementation should go through this helper rather than
+ *  walking the sequence itself.
+ *
+ *  Instances whose "enabled" key is absent or not true are skipped, so \a cb
+ *  only ever sees outputs that will actually run. */
+void SCLandlockForEachOutput(void *ruleset, const char *name, SCLandlockOutputFunc cb);
+
 void SCLandlockGrantReadPath(void *ruleset, const char *path);
 void SCLandlockGrantWritePath(void *ruleset, const char *path);
 

@@ -89,7 +89,7 @@ const JsonAddrInfo json_addr_info_zero;
  *  Skips the call entirely when the directory is already covered by the
  *  Suricata log directory (which LandlockSandboxing has already granted).
  */
-static void EveGrantFileDir(struct landlock_ruleset *ruleset, const char *path)
+static void EveGrantFileDir(void *ruleset, const char *path)
 {
     if (path == NULL || !PathIsAbsolute(path))
         return;
@@ -104,12 +104,8 @@ static void EveGrantFileDir(struct landlock_ruleset *ruleset, const char *path)
     SCFree(copy);
 }
 
-static void EveLandlockEnableInstance(struct landlock_ruleset *ruleset, SCConfNode *eve_conf)
+static void EveLandlockEnableInstance(void *ruleset, SCConfNode *eve_conf)
 {
-    const char *enabled = SCConfNodeLookupChildValue(eve_conf, "enabled");
-    if (enabled == NULL || !SCConfValIsTrue(enabled))
-        return;
-
     const char *filetype = SCConfNodeLookupChildValue(eve_conf, "filetype");
     if (filetype == NULL)
         filetype = DEFAULT_LOG_FILETYPE;
@@ -154,17 +150,7 @@ static void EveLandlockEnableInstance(struct landlock_ruleset *ruleset, SCConfNo
 
 static void OutputJsonLandlockEnable(struct landlock_ruleset *ruleset)
 {
-    SCConfNode *outputs = SCConfGetNode("outputs");
-    if (outputs == NULL)
-        return;
-
-    SCConfNode *output;
-    TAILQ_FOREACH (output, &outputs->head, next) {
-        SCConfNode *eve_conf = SCConfNodeLookupChild(output, "eve-log");
-        if (eve_conf == NULL)
-            continue;
-        EveLandlockEnableInstance(ruleset, eve_conf);
-    }
+    SCLandlockForEachOutput(ruleset, "eve-log", EveLandlockEnableInstance);
 }
 
 void OutputJsonRegister (void)

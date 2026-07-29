@@ -85,13 +85,8 @@ int AlertFastLogger(ThreadVars *tv, void *data, const Packet *p);
  *  common way to enable the module while discarding its output, and granting
  *  write on all of /dev would needlessly widen the sandbox.
  */
-static void AlertFastLogLandlockEnableInstance(
-        struct landlock_ruleset *ruleset, SCConfNode *fast_conf)
+static void AlertFastLogLandlockEnableInstance(void *ruleset, SCConfNode *fast_conf)
 {
-    const char *enabled = SCConfNodeLookupChildValue(fast_conf, "enabled");
-    if (enabled == NULL || !SCConfValIsTrue(enabled))
-        return;
-
     const char *filename = SCConfNodeLookupChildValue(fast_conf, "filename");
     if (filename == NULL)
         filename = DEFAULT_LOG_FILENAME;
@@ -108,17 +103,7 @@ static void AlertFastLogLandlockEnableInstance(
 
 static void AlertFastLogLandlockEnable(struct landlock_ruleset *ruleset)
 {
-    SCConfNode *outputs = SCConfGetNode("outputs");
-    if (outputs == NULL)
-        return;
-
-    SCConfNode *output;
-    TAILQ_FOREACH (output, &outputs->head, next) {
-        SCConfNode *fast_conf = SCConfNodeLookupChild(output, "fast");
-        if (fast_conf == NULL)
-            continue;
-        AlertFastLogLandlockEnableInstance(ruleset, fast_conf);
-    }
+    SCLandlockForEachOutput(ruleset, "fast", AlertFastLogLandlockEnableInstance);
 }
 
 void AlertFastLogRegister(void)
