@@ -547,10 +547,8 @@ static void LandlockGrantSystemReadPaths(struct landlock_ruleset *ruleset)
 
     for (size_t i = 0; i < sizeof(system_read_paths) / sizeof(system_read_paths[0]); i++) {
         const char *path = system_read_paths[i];
-        struct stat sb;
-        if (stat(path, &sb) != 0)
-            continue;
-
+        /* Open directly instead of stat()+open() to avoid a TOCTOU race: a
+         * missing or unreadable path simply fails here and is skipped. */
         int path_fd = open(path, O_PATH | O_CLOEXEC);
         if (path_fd == -1) {
             SCLogDebug("Can't open %s for landlock: %s", path, strerror(errno));
