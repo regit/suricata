@@ -116,6 +116,10 @@ void SCLandlockGrantWriteRemovePath(void *ruleset, const char *path)
 {
 }
 
+void SCLandlockGrantSocketPath(void *ruleset, const char *path)
+{
+}
+
 void SCLandlockGrantRewritePath(void *ruleset, const char *path)
 {
 }
@@ -200,16 +204,24 @@ static inline int landlock_restrict_self(const int ruleset_fd, const __u32 flags
 
 #define _LANDLOCK_ACCESS_FS_READ (LANDLOCK_ACCESS_FS_READ_FILE | LANDLOCK_ACCESS_FS_READ_DIR)
 
-/* Default write grant for directories Suricata owns. Deliberately excludes
- * LANDLOCK_ACCESS_FS_REMOVE_FILE and LANDLOCK_ACCESS_FS_TRUNCATE: those are
- * classic anti-forensics primitives (unlinking or zeroing logs/state to
- * erase attacker traces). Subsystems that legitimately need to unlink or
- * truncate their own files -- filestore staging cleanup, pcap ring-buffer
- * rotation, datasets state.csv rewrite -- must register a scoped grant on
- * their own directory or file. */
+/* Default write grant for directories Suricata owns.
+ *
+ * Deliberately excludes LANDLOCK_ACCESS_FS_REMOVE_FILE and
+ * LANDLOCK_ACCESS_FS_TRUNCATE: those are classic anti-forensics primitives
+ * (unlinking or zeroing logs/state to erase attacker traces). Also excludes
+ * LANDLOCK_ACCESS_FS_MAKE_SOCK, which only the unix command socket needs --
+ * a module that merely connects to an existing socket does not.
+ * Subsystems that legitimately need any of these -- filestore staging
+ * cleanup, pcap ring-buffer rotation, datasets state.csv rewrite, the unix
+ * command socket -- must register a scoped grant on their own directory or
+ * file.
+ *
+ * MAKE_DIR stays in: creating a subdirectory on the fly is common enough
+ * (tls-store's certs directory, any log filename holding a path, the
+ * Hyperscan cache) that carving it out would only push the same grant into
+ * most callers. */
 #define _LANDLOCK_SURI_ACCESS_FS_WRITE                                                             \
-    (LANDLOCK_ACCESS_FS_WRITE_FILE | LANDLOCK_ACCESS_FS_MAKE_DIR | LANDLOCK_ACCESS_FS_MAKE_REG |   \
-            LANDLOCK_ACCESS_FS_MAKE_SOCK)
+    (LANDLOCK_ACCESS_FS_WRITE_FILE | LANDLOCK_ACCESS_FS_MAKE_REG | LANDLOCK_ACCESS_FS_MAKE_DIR)
 
 #ifndef LANDLOCK_ACCESS_NET_BIND_TCP
 #define LANDLOCK_ACCESS_NET_BIND_TCP (1ULL << 0)
@@ -355,6 +367,23 @@ void SCLandlockGrantWriteRemovePath(void *vruleset, const char *directory)
     uint64_t access = _LANDLOCK_SURI_ACCESS_FS_WRITE | LANDLOCK_ACCESS_FS_REMOVE_FILE;
     if (LandlockSandboxingAddRule(ruleset, directory, access) == 0) {
         SCLogConfig("Added write+remove permission to '%s'", directory);
+    }
+}
+
+void SCLandlockGrantSocketPath(void *vruleset, const char *directory)
+{
+    struct landlock_ruleset *ruleset = vruleset;
+    if (ruleset == NULL || directory == NULL)
+        return;
+    /* Binding a unix socket needs FS_MAKE_SOCK, and Suricata unlinks any
+     * stale socket first, so FS_REMOVE_FILE too. MAKE_SOCK is out of the
+     * default write grant because only the unix command socket creates one:
+     * eve-log's unix_stream/unix_dgram filetypes connect() to a socket
+     * somebody else made, they never bind. */
+    uint64_t access = _LANDLOCK_SURI_ACCESS_FS_WRITE | LANDLOCK_ACCESS_FS_REMOVE_FILE |
+                      LANDLOCK_ACCESS_FS_MAKE_SOCK;
+    if (LandlockSandboxingAddRule(ruleset, directory, access) == 0) {
+        SCLogConfig("Added socket permission to '%s'", directory);
     }
 }
 
@@ -669,22 +698,26 @@ void LandlockSandboxing(SCInstance *suri)
             SCFree(file_name);
         }
     }
-    if (ConfUnixSocketIsEnable()) {
-        /* Suricata unlinks any stale socket before bind(), so REMOVE is
-         * required on the socket directory. */
+    /* ConfUnixSocketIsEnable() only looks at unix-command.enabled, which
+     * --unix-socket does not set: it selects the runmode instead. Check both
+     * or the socket directory goes ungranted exactly when the socket is
+     * certain to be used. */
+    if (ConfUnixSocketIsEnable() || SCRunmodeGet() == RUNMODE_UNIX_SOCKET) {
+        /* Binding the socket needs MAKE_SOCK, and Suricata unlinks any stale
+         * socket first, so REMOVE is required on the socket directory too. */
         const char *socketname;
         if (SCConfGetNonNull("unix-command.filename", &socketname) == 1) {
             if (PathIsAbsolute(socketname)) {
                 char *file_name = SCStrdup(socketname);
                 if (file_name != NULL) {
-                    SCLandlockGrantWriteRemovePath(ruleset, dirname(file_name));
+                    SCLandlockGrantSocketPath(ruleset, dirname(file_name));
                     SCFree(file_name);
                 }
             } else {
-                SCLandlockGrantWriteRemovePath(ruleset, LOCAL_STATE_DIR "/run/suricata/");
+                SCLandlockGrantSocketPath(ruleset, LOCAL_STATE_DIR "/run/suricata/");
             }
         } else {
-            SCLandlockGrantWriteRemovePath(ruleset, LOCAL_STATE_DIR "/run/suricata/");
+            SCLandlockGrantSocketPath(ruleset, LOCAL_STATE_DIR "/run/suricata/");
         }
     }
     if (!suri->sig_file_exclusive) {
