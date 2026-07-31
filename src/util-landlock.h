@@ -67,6 +67,13 @@ void SCLandlockGrantWriteReferPath(void *ruleset, const char *path);
  *  a common anti-forensics primitive -- opt in explicitly. */
 void SCLandlockGrantWriteRemovePath(void *ruleset, const char *path);
 
+/** Same as SCLandlockGrantWriteRemovePath but also grants
+ *  LANDLOCK_ACCESS_FS_MAKE_SOCK, so a unix socket can be bound in the
+ *  directory. Intended for the unix command socket. MAKE_SOCK is kept out of
+ *  the default write grant since a module that only connects to an existing
+ *  socket does not need it. */
+void SCLandlockGrantSocketPath(void *ruleset, const char *path);
+
 /** Grants read and write access plus LANDLOCK_ACCESS_FS_TRUNCATE on the
  *  directory. Backs the ``security.landlock.directories.rewrite`` YAML list,
  *  for state files that are rewritten in place with fopen(..., "w") --
