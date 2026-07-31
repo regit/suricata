@@ -531,11 +531,15 @@ static void LandlockSandboxingApplyNetPorts(
     }
 }
 
-/* System pseudo-filesystem paths that glibc, jemalloc and Rust stdlib probe
- * during normal startup and runtime. Granting read here avoids spurious EACCES
- * (and audit noise) without measurably widening the sandbox: every Linux
- * process can already read these. Paths are granted as-is when they exist;
- * missing paths are silently skipped. */
+/** \brief Grant read access on system pseudo-filesystem paths.
+ *
+ *  Paths that glibc, jemalloc and Rust stdlib probe during normal startup and
+ *  runtime. Granting read here avoids spurious EACCES (and audit noise) without
+ *  measurably widening the sandbox: every Linux process can already read these.
+ *  Paths are granted as-is when they exist; missing paths are silently skipped.
+ *
+ *  \param ruleset the landlock ruleset to add the read rules to
+ */
 static void LandlockGrantSystemReadPaths(struct landlock_ruleset *ruleset)
 {
     static const char *const system_read_paths[] = {
