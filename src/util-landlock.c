@@ -527,7 +527,7 @@ static void LandlockSandboxingApplyNetPorts(
     TAILQ_FOREACH (port_node, &ports->head, next) {
         if (port_node->val == NULL)
             continue;
-        uint16_t port;
+        uint16_t port = 0;
         if (StringParseUint16(&port, 10, 0, port_node->val) < 0 || port == 0) {
             SCLogWarning("Invalid port '%s' in %s: expected a value in [1, 65535].", port_node->val,
                     conf_key);
