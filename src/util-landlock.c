@@ -246,7 +246,9 @@ static inline struct landlock_ruleset *LandlockCreateRuleset(void)
 
     ruleset->attr.handled_access_fs =
             _LANDLOCK_ACCESS_FS_READ | _LANDLOCK_ACCESS_FS_WRITE | LANDLOCK_ACCESS_FS_EXECUTE;
+#ifdef HAVE_LANDLOCK_RULESET_ATTR_HANDLED_ACCESS_NET
     ruleset->attr.handled_access_net = _LANDLOCK_ACCESS_NET;
+#endif
 
     int abi = landlock_create_ruleset(NULL, 0, LANDLOCK_CREATE_RULESET_VERSION);
     if (abi < 0) {
@@ -265,7 +267,9 @@ static inline struct landlock_ruleset *LandlockCreateRuleset(void)
             }
             __attribute__((fallthrough));
         case 3:
+#ifdef HAVE_LANDLOCK_RULESET_ATTR_HANDLED_ACCESS_NET
             ruleset->attr.handled_access_net &= ~_LANDLOCK_ACCESS_NET;
+#endif
             __attribute__((fallthrough));
         case 4:
             ruleset->attr.handled_access_fs &= ~LANDLOCK_ACCESS_FS_IOCTL_DEV;
@@ -463,6 +467,7 @@ void SCLandlockGrantFile(void *vruleset, const char *path, uint32_t access)
     SCLogConfig("Added file permission (0x%x) on '%s'", access, path);
 }
 
+#ifdef HAVE_LANDLOCK_RULESET_ATTR_HANDLED_ACCESS_NET
 static void LandlockGrantNetPort(
         struct landlock_ruleset *ruleset, uint16_t port, uint64_t access, const char *access_name)
 {
@@ -482,10 +487,11 @@ static void LandlockGrantNetPort(
     }
     SCLogConfig("Added net %s permission on port %u", access_name, port);
 }
+#endif
 
 void SCLandlockGrantNetBindTCP(void *vruleset, uint16_t port)
 {
-#ifdef LANDLOCK_ACCESS_NET_BIND_TCP
+#ifdef HAVE_LANDLOCK_RULESET_ATTR_HANDLED_ACCESS_NET
     LandlockGrantNetPort(
             (struct landlock_ruleset *)vruleset, port, LANDLOCK_ACCESS_NET_BIND_TCP, "bind-tcp");
 #else
@@ -496,7 +502,7 @@ void SCLandlockGrantNetBindTCP(void *vruleset, uint16_t port)
 
 void SCLandlockGrantNetConnectTCP(void *vruleset, uint16_t port)
 {
-#ifdef LANDLOCK_ACCESS_NET_CONNECT_TCP
+#ifdef HAVE_LANDLOCK_RULESET_ATTR_HANDLED_ACCESS_NET
     LandlockGrantNetPort((struct landlock_ruleset *)vruleset, port, LANDLOCK_ACCESS_NET_CONNECT_TCP,
             "connect-tcp");
 #else
