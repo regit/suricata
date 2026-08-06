@@ -33,6 +33,24 @@
 #include "util-plugin.h"
 #include "util-validate.h"
 
+void SCLandlockForEachOutput(void *ruleset, const char *name, SCLandlockOutputFunc cb)
+{
+    if (name == NULL || cb == NULL)
+        return;
+
+    SCConfNode *outputs = SCConfGetNode("outputs");
+    if (outputs == NULL)
+        return;
+
+    SCConfNode *conf = NULL;
+    while ((conf = SCConfNodeLookupInSequence(outputs, name, conf)) != NULL) {
+        const char *enabled = SCConfNodeLookupChildValue(conf, "enabled");
+        if (enabled == NULL || !SCConfValIsTrue(enabled))
+            continue;
+        cb(ruleset, conf);
+    }
+}
+
 #ifndef HAVE_LINUX_LANDLOCK_H
 
 void LandlockSandboxing(SCInstance *suri)
