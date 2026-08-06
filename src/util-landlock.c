@@ -33,6 +33,40 @@
 #include "util-plugin.h"
 #include "util-validate.h"
 
+/**
+ * \brief Run \a cb for every enabled instance of the \a name output
+ *
+ * "outputs" is a YAML sequence, so an output lives at outputs.<n>.<name> and
+ * a direct SCConfGetNode("outputs.<name>") never matches -- a mistake that
+ * silently disables a module's whole landlock declaration. Every
+ * LandlockEnable implementation should go through this helper rather than
+ * walking the sequence itself.
+ *
+ * Instances whose "enabled" key is absent or not true are skipped, so \a cb
+ * only ever sees outputs that will actually run.
+ *
+ * \param ruleset opaque landlock ruleset, passed as-is to \a cb
+ * \param name name of the output, as used in the YAML configuration
+ * \param cb callback run for each enabled instance of the output
+ */
+void SCLandlockForEachOutput(void *ruleset, const char *name, SCLandlockOutputFunc cb)
+{
+    if (name == NULL || cb == NULL)
+        return;
+
+    SCConfNode *outputs = SCConfGetNode("outputs");
+    if (outputs == NULL)
+        return;
+
+    SCConfNode *conf = NULL;
+    while ((conf = SCConfNodeLookupInSequence(outputs, name, conf)) != NULL) {
+        const char *enabled = SCConfNodeLookupChildValue(conf, "enabled");
+        if (enabled == NULL || !SCConfValIsTrue(enabled))
+            continue;
+        cb(ruleset, conf);
+    }
+}
+
 #ifndef HAVE_LINUX_LANDLOCK_H
 
 void LandlockSandboxing(SCInstance *suri)
