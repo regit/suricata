@@ -24,6 +24,7 @@
 #include "suricata.h"
 #include "detect-engine.h"
 #include "feature.h"
+#include "output.h"
 #include "util-byte.h"
 #include "util-conf.h"
 #include "util-file.h"
@@ -717,6 +718,14 @@ void LandlockSandboxing(SCInstance *suri)
 #ifdef HAVE_PLUGINS
     SCPluginsLandlockEnable(ruleset);
 #endif
+
+    /* Let registered output modules declare theirs. */
+    OutputModule *output_module;
+    TAILQ_FOREACH (output_module, &output_modules, entries) {
+        if (output_module->LandlockEnable != NULL) {
+            output_module->LandlockEnable(ruleset);
+        }
+    }
 
     LandlockEnforceRuleset(ruleset);
     SCFree(ruleset);
