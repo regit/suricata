@@ -30,6 +30,7 @@
 #include "util-landlock.h"
 #include "util-mem.h"
 #include "util-path.h"
+#include "util-plugin.h"
 #include "util-validate.h"
 
 /* Registry of pending per-file grants populated during configuration
@@ -711,6 +712,11 @@ void LandlockSandboxing(SCInstance *suri)
     TAILQ_FOREACH (pending, &sc_landlock_pending_files, next) {
         SCLandlockGrantFile(ruleset, pending->path, pending->access);
     }
+
+    /* Let plugins declare their landlock needs. */
+#ifdef HAVE_PLUGINS
+    SCPluginsLandlockEnable(ruleset);
+#endif
 
     LandlockEnforceRuleset(ruleset);
     SCFree(ruleset);
