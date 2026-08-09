@@ -9,6 +9,8 @@ in with pkgs;
       bash
       cargo
       rustc
+      rustfmt
+      rust-bindgen
       rust-cbindgen
       rust-analyzer
       tree-sitter-grammars.tree-sitter-rust
