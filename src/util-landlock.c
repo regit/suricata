@@ -811,6 +811,15 @@ void LandlockSandboxing(SCInstance *suri)
     }
 #endif
 
+#ifdef HAVE_GEOIP
+    /* The MaxMind DB is mmap'd at signature parsing, which happens before
+     * enforcement, but a live rule reload re-opens it and needs read. */
+    const char *geoip_db;
+    if (SCConfGetNonNull("geoip-database", &geoip_db) == 1) {
+        SCLandlockGrantFile(ruleset, geoip_db, SC_LANDLOCK_FILE_READ);
+    }
+#endif
+
     if (suri->pid_filename) {
         /* PID file is written at startup and unlinked on shutdown, so REMOVE
          * is required on its containing directory. */
