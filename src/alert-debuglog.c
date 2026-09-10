@@ -52,7 +52,9 @@
 #include "flow-bit.h"
 #include "util-var-name.h"
 #include "util-optimize.h"
+#include "util-landlock.h"
 #include "util-logopenfile.h"
+#include "util-path.h"
 #include "util-time.h"
 
 #include "stream-tcp-reassemble.h"
@@ -482,6 +484,33 @@ static int AlertDebugLogLogger(ThreadVars *tv, void *thread_data, const Packet *
     return TM_ECODE_OK;
 }
 
+/** \brief Declare the filesystem access the "alert-debug" output needs.
+ *
+ *  Only an absolute filename needs a grant, a relative one being created in
+ *  the log directory which is already granted. The access is asked for on the
+ *  file itself and truncation is added when append is disabled.
+ */
+static void AlertDebugLogLandlockEnableInstance(void *ruleset, SCConfNode *conf)
+{
+    const char *filename = SCConfNodeLookupChildValue(conf, "filename");
+    if (filename == NULL)
+        filename = DEFAULT_LOG_FILENAME;
+    if (!PathIsAbsolute(filename))
+        return;
+
+    uint32_t access = SC_LANDLOCK_FILE_WRITE;
+    const char *append = SCConfNodeLookupChildValue(conf, "append");
+    if (append != NULL && !SCConfValIsTrue(append))
+        access |= SC_LANDLOCK_FILE_TRUNCATE;
+
+    SCLandlockGrantFile(ruleset, filename, access);
+}
+
+static void AlertDebugLogLandlockEnable(void *ruleset)
+{
+    SCLandlockForEachOutput(ruleset, "alert-debug", AlertDebugLogLandlockEnableInstance);
+}
+
 void AlertDebugLogRegister(void)
 {
     OutputPacketLoggerFunctions output_logger_functions = {
@@ -494,4 +523,8 @@ void AlertDebugLogRegister(void)
 
     OutputRegisterPacketModule(LOGGER_ALERT_DEBUG, MODULE_NAME, "alert-debug", AlertDebugLogInitCtx,
             &output_logger_functions);
+    OutputModule *module = OutputGetModuleByConfName("alert-debug");
+    if (module != NULL) {
+        module->LandlockEnable = AlertDebugLogLandlockEnable;
+    }
 }
