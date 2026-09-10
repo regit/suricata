@@ -41,7 +41,9 @@
 #include "util-privs.h"
 #include "util-buffer.h"
 
+#include "util-landlock.h"
 #include "util-logopenfile.h"
+#include "util-path.h"
 #include "util-time.h"
 
 #define DEFAULT_LOG_FILENAME "stats.log"
@@ -282,8 +284,39 @@ static void LogStatsLogDeInitCtx(OutputCtx *output_ctx)
     SCFree(output_ctx);
 }
 
+/** \brief Declare the filesystem access the "stats" output needs.
+ *
+ *  Only an absolute filename needs a grant, a relative one being created in
+ *  the log directory which is already granted. The access is asked for on the
+ *  file itself and truncation is added when append is disabled.
+ */
+static void LogStatsLogLandlockEnableInstance(void *ruleset, SCConfNode *conf)
+{
+    const char *filename = SCConfNodeLookupChildValue(conf, "filename");
+    if (filename == NULL)
+        filename = DEFAULT_LOG_FILENAME;
+    if (!PathIsAbsolute(filename))
+        return;
+
+    uint32_t access = SC_LANDLOCK_FILE_WRITE;
+    const char *append = SCConfNodeLookupChildValue(conf, "append");
+    if (append != NULL && !SCConfValIsTrue(append))
+        access |= SC_LANDLOCK_FILE_TRUNCATE;
+
+    SCLandlockGrantFile(ruleset, filename, access);
+}
+
+static void LogStatsLogLandlockEnable(void *ruleset)
+{
+    SCLandlockForEachOutput(ruleset, "stats", LogStatsLogLandlockEnableInstance);
+}
+
 void LogStatsLogRegister (void)
 {
     OutputRegisterStatsModule(LOGGER_STATS, MODULE_NAME, "stats", LogStatsLogInitCtx,
             LogStatsLogger, LogStatsLogThreadInit, LogStatsLogThreadDeinit);
+    OutputModule *module = OutputGetModuleByConfName("stats");
+    if (module != NULL) {
+        module->LandlockEnable = LogStatsLogLandlockEnable;
+    }
 }
