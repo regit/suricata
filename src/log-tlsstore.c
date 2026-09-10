@@ -37,6 +37,7 @@
 #include "output.h"
 
 #include "util-conf.h"
+#include "util-landlock.h"
 #include "util-path.h"
 #include "util-time.h"
 #include "util-print.h"
@@ -494,6 +495,40 @@ static OutputInitResult LogTlsStoreLogInitCtx(SCConfNode *conf)
     SCReturnCT(result, "OutputInitResult");
 }
 
+/** \brief Declare the filesystem access the "tls-store" output needs.
+ *
+ *  The logger writes .pem and .meta files under certs-log-dir (resolved
+ *  against the log directory when relative). Same pcap replays overwrite
+ *  existing files, so truncate access is required on top of the standard
+ *  write. The directory is created lazily by the thread init, but landlock
+ *  rules must attach to an existing inode.
+ */
+static void LogTlsStoreLandlockEnableInstance(void *ruleset, SCConfNode *conf)
+{
+    char dir[PATH_MAX];
+    const char *s_base_dir = SCConfNodeLookupChildValue(conf, "certs-log-dir");
+    if (s_base_dir == NULL || strlen(s_base_dir) == 0) {
+        strlcpy(dir, SCConfigGetLogDirectory(), sizeof(dir));
+    } else if (PathIsAbsolute(s_base_dir)) {
+        strlcpy(dir, s_base_dir, sizeof(dir));
+    } else {
+        if (PathMerge(dir, sizeof(dir), SCConfigGetLogDirectory(), s_base_dir) < 0)
+            return;
+    }
+    if (!SCPathExists(dir)) {
+        if (SCCreateDirectoryTree(dir, true) != 0) {
+            SCLogWarning("Tls-store landlock: can't create %s: %s", dir, strerror(errno));
+            return;
+        }
+    }
+    SCLandlockGrantRewritePath(ruleset, dir);
+}
+
+static void LogTlsStoreLandlockEnable(void *ruleset)
+{
+    SCLandlockForEachOutput(ruleset, "tls-store", LogTlsStoreLandlockEnableInstance);
+}
+
 void LogTlsStoreRegister (void)
 {
     OutputRegisterTxModuleWithCondition(LOGGER_TLS_STORE, MODULE_NAME, "tls-store",
@@ -503,6 +538,11 @@ void LogTlsStoreRegister (void)
     OutputRegisterTxModuleWithCondition(LOGGER_TLS_STORE_CLIENT, MODULE_NAME, "tls-store",
             LogTlsStoreLogInitCtx, ALPROTO_TLS, LogTlsStoreLoggerClient, LogTlsStoreConditionClient,
             LogTlsStoreLogThreadInit, LogTlsStoreLogThreadDeinit);
+
+    OutputModule *module = OutputGetModuleByConfName("tls-store");
+    if (module != NULL) {
+        module->LandlockEnable = LogTlsStoreLandlockEnable;
+    }
 
     SC_ATOMIC_INIT(cert_id);
     SC_ATOMIC_SET(cert_id, 1);
