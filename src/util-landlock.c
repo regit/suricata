@@ -820,6 +820,29 @@ void LandlockSandboxing(SCInstance *suri)
     }
 #endif
 
+    /* IP reputation files are read at startup and on rule reload. The
+     * categories file is a single file, usually absolute. The reputation
+     * files listed under "reputation-files" are resolved against
+     * default-reputation-path when relative, so granting read on that
+     * directory covers all relative entries. Absolute entries get their
+     * own per-file grant. */
+    const char *rep_cat_file;
+    if (SCConfGetNonNull("reputation-categories-file", &rep_cat_file) == 1) {
+        SCLandlockGrantFile(ruleset, rep_cat_file, SC_LANDLOCK_FILE_READ);
+    }
+    const char *rep_default_path;
+    if (SCConfGetNonNull("default-reputation-path", &rep_default_path) == 1) {
+        SCLandlockGrantReadPath(ruleset, rep_default_path);
+    }
+    SCConfNode *rep_files = SCConfGetNode("reputation-files");
+    if (rep_files != NULL) {
+        SCConfNode *rep_file;
+        TAILQ_FOREACH (rep_file, &rep_files->head, next) {
+            if (rep_file->val != NULL && PathIsAbsolute(rep_file->val)) {
+                SCLandlockGrantFile(ruleset, rep_file->val, SC_LANDLOCK_FILE_READ);
+            }
+        }
+    }
     if (suri->pid_filename) {
         /* PID file is written at startup and unlinked on shutdown, so REMOVE
          * is required on its containing directory. */
