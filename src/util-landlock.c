@@ -795,6 +795,22 @@ void LandlockSandboxing(SCInstance *suri)
     } else if (SCPathExists(CONFIG_DIR "/threshold.config")) {
         SCLandlockGrantFile(ruleset, CONFIG_DIR "/threshold.config", SC_LANDLOCK_FILE_READ);
     }
+
+#ifdef HAVE_MAGIC
+    /* libmagic opens the .mgc database at thread init, which happens after
+     * enforcement, so a read grant is needed on the directory containing it.
+     * The dir grant also covers the sibling .magic files libmagic can fall
+     * back to. */
+    const char *magic_file;
+    if (SCConfGetNonNull("magic-file", &magic_file) == 1 && strlen(magic_file) > 0) {
+        char *file_name = SCStrdup(magic_file);
+        if (file_name != NULL) {
+            SCLandlockGrantReadPath(ruleset, dirname(file_name));
+            SCFree(file_name);
+        }
+    }
+#endif
+
     if (suri->pid_filename) {
         /* PID file is written at startup and unlinked on shutdown, so REMOVE
          * is required on its containing directory. */
