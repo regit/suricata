@@ -879,10 +879,17 @@ void LandlockSandboxing(SCInstance *suri)
             SCLandlockGrantReadPath(ruleset, rule_path);
         }
     }
+    /* Firewall rule files listed under firewall.rule-files are resolved
+     * against firewall.rule-path when relative, so grant read there so
+     * rule reloads keep working. */
+    const char *fw_rule_path;
+    if (SCConfGetNonNull("firewall.rule-path", &fw_rule_path) == 1) {
+        SCLandlockGrantReadPath(ruleset, fw_rule_path);
+    }
     /* The firewall rule file (--firewall-rules-exclusive) is loaded from the
      * path as provided so an absolute one can be outside of the directories
      * granted above. A relative path is resolved against firewall.rule-path
-     * which is already covered by the directory grants. */
+     * which was granted just above. */
     LandlockGrantRuleFile(ruleset, suri->firewall_rule_file);
 
     SCConfNode *read_dirs = SCConfGetNode("security.landlock.directories.read");
