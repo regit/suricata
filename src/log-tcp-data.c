@@ -27,6 +27,7 @@
 #include "threadvars.h"
 
 #include "util-conf.h"
+#include "util-landlock.h"
 #include "util-logopenfile.h"
 #include "util-path.h"
 #include "util-print.h"
@@ -43,6 +44,47 @@ static void LogTcpDataLogDeInitCtx(OutputCtx *);
 
 int LogTcpDataLogger(ThreadVars *tv, void *thread_data, const Flow *f, const uint8_t *data, uint32_t data_len, uint64_t tx_id, uint8_t flags);
 
+/** \brief Declare the filesystem access the tcp-data / http-body-data outputs need.
+ *
+ *  The "dir" mode writes into a subdirectory of the log directory, which is
+ *  already granted. Only an absolute filename in "file" mode needs its own
+ *  grant, with truncation added when append is disabled.
+ */
+static void LogTcpDataLogLandlockEnableInstance(void *ruleset, SCConfNode *conf)
+{
+    const char *logtype = SCConfNodeLookupChildValue(conf, "type");
+    if (logtype == NULL)
+        logtype = "file";
+    if (strcmp(logtype, "dir") == 0)
+        return;
+
+    const char *filename = SCConfNodeLookupChildValue(conf, "filename");
+    char default_filename[PATH_MAX];
+    if (filename == NULL) {
+        snprintf(default_filename, sizeof(default_filename), "%s.log", conf->name);
+        filename = default_filename;
+    }
+    if (!PathIsAbsolute(filename))
+        return;
+
+    uint32_t access = SC_LANDLOCK_FILE_WRITE;
+    const char *append = SCConfNodeLookupChildValue(conf, "append");
+    if (append != NULL && !SCConfValIsTrue(append))
+        access |= SC_LANDLOCK_FILE_TRUNCATE;
+
+    SCLandlockGrantFile(ruleset, filename, access);
+}
+
+static void LogTcpDataLogLandlockEnable(void *ruleset)
+{
+    SCLandlockForEachOutput(ruleset, "tcp-data", LogTcpDataLogLandlockEnableInstance);
+}
+
+static void LogHttpBodyDataLogLandlockEnable(void *ruleset)
+{
+    SCLandlockForEachOutput(ruleset, "http-body-data", LogTcpDataLogLandlockEnableInstance);
+}
+
 void LogTcpDataLogRegister (void) {
     OutputRegisterStreamingModule(LOGGER_TCP_DATA, MODULE_NAME, "tcp-data", LogTcpDataLogInitCtx,
             LogTcpDataLogger, STREAMING_TCP_DATA, LogTcpDataLogThreadInit,
@@ -50,6 +92,14 @@ void LogTcpDataLogRegister (void) {
     OutputRegisterStreamingModule(LOGGER_TCP_DATA, MODULE_NAME, "http-body-data",
             LogTcpDataLogInitCtx, LogTcpDataLogger, STREAMING_HTTP_BODIES, LogTcpDataLogThreadInit,
             LogTcpDataLogThreadDeinit);
+    OutputModule *module = OutputGetModuleByConfName("tcp-data");
+    if (module != NULL) {
+        module->LandlockEnable = LogTcpDataLogLandlockEnable;
+    }
+    module = OutputGetModuleByConfName("http-body-data");
+    if (module != NULL) {
+        module->LandlockEnable = LogHttpBodyDataLogLandlockEnable;
+    }
 }
 
 typedef struct LogTcpDataFileCtx_ {
