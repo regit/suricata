@@ -64,7 +64,7 @@ jobs:
           cargo install --target x86_64-unknown-linux-musl --debug cbindgen
           cp $HOME/.cargo/bin/cbindgen .
       - name: Uploading prep archive
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: cbindgen
           path: .
@@ -625,13 +625,13 @@ jobs:
       # container name directly in an artifact, as artifacts can't
       # have ':' in the name.
       - if: ${{ matrix.container == 'fedora:44' &&  env.skip != 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         name: Uploading RPMs
         with:
           name: rpms-fedora-44
           path: suricata-rpms/devel/rpms
       - if: ${{ matrix.container == 'almalinux:9' && env.skip != 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         name: Uploading RPMs
         with:
           name: rpms-epel-9
@@ -915,7 +915,7 @@ jobs:
       - run: llvm-profdata merge -o default.profdata $(find suricata-verify/tests/ -name '*.profraw')
       - run: llvm-cov export ./src/suricata -instr-profile=default.profdata -format=lcov --ignore-filename-regex="^/(root|usr|rustc|github)/.*" --skip-branches > coverage.lcov
       - name: Upload coverage.lcov artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: coverage-lcov-${{ github.job }}
           path: coverage.lcov
@@ -1144,7 +1144,7 @@ jobs:
         run: ./qa/ci/rust-asan.sh
       - name: Upload failure logs
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: rust-asan-logs
           if-no-files-found: ignore
@@ -1660,7 +1660,7 @@ jobs:
           CARGO_INCREMENTAL: 0
           LLVM_PROFILE_FILE: "/tmp/rust-plugin-%p-%m.profraw"
       - name: Upload coverage.lcov artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: coverage-lcov-${{ github.job }}
           path: coverage.lcov
@@ -1773,7 +1773,7 @@ jobs:
       - run: llvm-profdata-19 merge -o default.profdata $(find /tmp/ -name '*.profraw')
       - run: llvm-cov-19 export ./src/suricata -instr-profile=default.profdata -format=lcov --ignore-filename-regex="^/(root|usr|rustc|github)/.*" --skip-branches > coverage.lcov
       - name: Upload coverage.lcov artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: coverage-lcov-${{ github.job }}
           path: coverage.lcov
@@ -1936,7 +1936,7 @@ jobs:
           LLVM_PROFILE_FILE: "/tmp/sv-live-afpdpdk-%p-%m.profraw"
       - name: Upload failed suricata-verify live test outputs
         if: ${{ failure() && steps.sv_live.outcome == 'failure' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: sv-live-output-${{ github.job }}
           path: |
@@ -1947,7 +1947,7 @@ jobs:
       - run: llvm-profdata-19 merge -o default.profdata $(find /tmp/ -name '*.profraw')
       - run: llvm-cov-19 export ./src/suricata -instr-profile=default.profdata -format=lcov --ignore-filename-regex="^/(root|usr|rustc|github)/.*" --skip-branches > coverage.lcov
       - name: Upload coverage.lcov artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: coverage-lcov-${{ github.job }}
           path: coverage.lcov
@@ -2201,7 +2201,7 @@ jobs:
           LLVM_PROFILE_FILE: "/tmp/sv-live-%p-%m.profraw"
       - name: Upload failed suricata-verify live test outputs
         if: ${{ failure() && steps.sv_live.outcome == 'failure' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: sv-live-output-${{ github.job }}
           path: |
@@ -2214,7 +2214,7 @@ jobs:
       - run: llvm-profdata-19 merge -o combined.profdata afp-ips.profdata nfq-ips.profdata afp-ips-autofp.profdata nfq-ips-workers.profdata afp-ips-bond1.profdata afp-ips-bond2.profdata afp-fw-netns-bridge.profdata nfq-fw-netns-route.profdata sv-live.profdata
       - run: llvm-cov-19 export ./src/suricata -instr-profile=combined.profdata -format=lcov --ignore-filename-regex="^(/github/home/.cargo/.*|/usr/.*|/rustc/.*)" --skip-branches > coverage.lcov
       - name: Upload coverage.lcov artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: coverage-lcov-${{ github.job }}
           path: coverage.lcov
@@ -2348,7 +2348,7 @@ jobs:
         run: ASAN_OPTIONS=detect_leaks=0 python3 ./suricata-verify/live/run.py
       - name: Upload failed suricata-verify live test outputs
         if: ${{ failure() && steps.sv_live.outcome == 'failure' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: sv-live-output-${{ github.job }}
           path: |
@@ -2455,7 +2455,7 @@ jobs:
       - run: llvm-profdata-19 merge -o default.profdata $(find /tmp/ -name '*.profraw')
       - run: llvm-cov-19 export ./src/suricata -instr-profile=default.profdata -format=lcov --ignore-filename-regex="^/(root|usr|rustc|github)/.*" --skip-branches > coverage.lcov
       - name: Upload coverage.lcov artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: coverage-lcov-${{ github.job }}
           path: coverage.lcov
@@ -3058,7 +3058,7 @@ jobs:
         run: ASAN_OPTIONS=detect_leaks=0 python3 ./suricata-verify/live/run.py dpdk
       - name: Upload failed suricata-verify live test outputs
         if: ${{ failure() && steps.sv_live.outcome == 'failure' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: sv-live-output-${{ github.job }}-${{ matrix.dpdk_version }}
           path: |
@@ -3250,7 +3250,7 @@ jobs:
         run: python3 ./suricata-verify/live/run.py
       - name: Upload failed suricata-verify live test outputs
         if: ${{ failure() && steps.sv_live.outcome == 'failure' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: sv-live-output-${{ github.job }}
           path: |
@@ -3355,7 +3355,7 @@ jobs:
         run: |
           mkdir dist
           mv suricata-*.tar.gz dist
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         name: Uploading distribution
         with:
           name: dist
