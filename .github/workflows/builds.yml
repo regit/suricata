@@ -3540,7 +3540,7 @@ jobs:
         with:
           name: prep
           path: prep
-      - uses: vmactions/openbsd-vm@5f7b2c933b8846a138361d6843c52af4bef5d945
+      - uses: vmactions/openbsd-vm@f1ca8bc8ecc5b6ef7218e5b914836e067e1546d3
         with:
           release: "7.9"
           arch: x86_64
